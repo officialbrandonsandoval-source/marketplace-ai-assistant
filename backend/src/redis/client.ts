@@ -1,4 +1,5 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
+import type { RedisOptions } from 'ioredis';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,15 +9,17 @@ if (!redisUrl) {
   throw new Error('REDIS_URL environment variable is required');
 }
 
-export const redis = new Redis(redisUrl, {
+const redisOptions: RedisOptions = {
   maxRetriesPerRequest: 3,
   retryStrategy: (times: number) => {
     if (times > 3) return null;
     return Math.min(times * 200, 2000);
   },
-});
+};
 
-redis.on('error', (error) => {
+export const redis = new Redis(redisUrl, redisOptions);
+
+redis.on('error', (error: unknown) => {
   // eslint-disable-next-line no-console
   console.error('Redis connection error:', error);
 });

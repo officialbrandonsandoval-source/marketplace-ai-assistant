@@ -2,16 +2,19 @@
  * UI Injector
  * Creates Shadow DOM and mounts Preact UI panel
  * 
- * PHASE 2 IMPLEMENTATION REQUIRED:
- * - Create Shadow DOM container for CSS isolation
- * - Mount Preact root inside Shadow DOM
- * - Position panel relative to Facebook's message input
- * - Handle cleanup and re-injection on navigation
+ * PHASE 2 IMPLEMENTATION:
+ * ✓ Create Shadow DOM container for CSS isolation
+ * ✓ Mount Preact root inside Shadow DOM
+ * ✓ Position panel relative to Facebook's UI
+ * ✓ Handle cleanup and re-injection on navigation
  */
 
-import { render } from 'preact';
+import { render, h } from 'preact';
 import { logger } from '@/utils/logger.ts';
 import { AssistantPanel } from '@/ui/AssistantPanel.tsx';
+
+const CONTAINER_ID = 'claude-assistant-root';
+const PULSE_ANIMATION_ID = 'claude-pulse-animation';
 
 export class UIInjector {
   private shadowRoot: ShadowRoot | null = null;
@@ -24,22 +27,44 @@ export class UIInjector {
    */
   inject(): void {
     if (this.isInjected) {
-      logger.warn('UI already injected');
+      logger.warn('UI already injected, skipping');
       return;
     }
 
     try {
       logger.info('Injecting AI Assistant UI panel');
 
-      // TODO Phase 2: Implement injection logic
-      // - Find insertion point in Facebook DOM
-      // - Create container element
-      // - Attach Shadow DOM
-      // - Mount Preact component
-      // - Position panel appropriately
+      // Find anchor point in Facebook's DOM
+      const anchor = this.findAnchor();
+      if (!anchor) {
+        logger.error('Could not find suitable anchor point for UI injection');
+        return;
+      }
+
+      // Create container element
+      this.containerElement = document.createElement('div');
+      this.containerElement.id = CONTAINER_ID;
+      this.containerElement.style.cssText = `
+        position: relative;
+        z-index: 9999;
+        margin-bottom: 16px;
+      `;
+
+      // Attach Shadow DOM for CSS isolation
+      this.shadowRoot = this.containerElement.attachShadow({ mode: 'open' });
+
+      // Inject scoped styles
+      this.injectStyles();
+
+      // Mount Preact component into Shadow DOM using createElement API
+      render(h(AssistantPanel, null), this.shadowRoot);
+
+      // Insert into Facebook's DOM
+      anchor.insertBefore(this.containerElement, anchor.firstChild);
 
       this.isInjected = true;
-      logger.info('UI injection complete');
+      logger.info({ anchorType: anchor.tagName }, 'UI injection complete');
+
     } catch (error) {
       logger.error({ error }, 'Failed to inject UI');
       throw error;
@@ -72,6 +97,7 @@ export class UIInjector {
       this.isInjected = false;
 
       logger.info('UI removal complete');
+
     } catch (error) {
       logger.error({ error }, 'Error removing UI');
     }
@@ -83,7 +109,11 @@ export class UIInjector {
   reinject(): void {
     logger.info('Re-injecting UI after navigation');
     this.remove();
-    this.inject();
+    
+    // Small delay to ensure DOM is stable
+    setTimeout(() => {
+      this.inject();
+    }, 100);
   }
 
   /**
@@ -94,39 +124,310 @@ export class UIInjector {
   }
 
   /**
-   * Create Shadow DOM container
+   * Find anchor point for UI injection
+   * Tries multiple strategies in priority order
    */
-  private createShadowContainer(): ShadowRoot {
-    // TODO Phase 2: Create and attach Shadow DOM
-    // - Create host element
-    // - Attach shadow root (mode: 'open')
-    // - Inject CSS for styling (scoped to shadow DOM)
-    
-    throw new Error('Not implemented (Phase 2)');
+  private findAnchor(): HTMLElement | null {
+    try {
+      // Strategy 1: Find message composer area (most reliable)
+      const composerAnchor = this.findComposerAnchor();
+      if (composerAnchor) {
+        logger.debug('Using composer area as anchor');
+        return composerAnchor;
+      }
+
+      // Strategy 2: Find right sidebar
+      const sidebarAnchor = this.findSidebarAnchor();
+      if (sidebarAnchor) {
+        logger.debug('Using sidebar as anchor');
+        return sidebarAnchor;
+      }
+
+      // Strategy 3: Find thread container
+      const threadContainer = document.querySelector<HTMLElement>('[role="main"]');
+      if (threadContainer) {
+        logger.debug('Using thread container as anchor');
+        return threadContainer;
+      }
+
+      logger.warn('No suitable anchor found');
+      return null;
+
+    } catch (error) {
+      logger.error({ error }, 'Error finding anchor point');
+      return null;
+    }
   }
 
   /**
-   * Find insertion point in Facebook DOM
+   * Find message composer area (preferred anchor)
    */
-  private findInsertionPoint(): HTMLElement | null {
-    // TODO Phase 2: Find appropriate place to inject UI
-    // - Look for message input container
-    // - Ensure it's visible and stable
-    
+  private findComposerAnchor(): HTMLElement | null {
+    const selectors = [
+      '[role="textbox"][contenteditable="true"]',
+      'div[aria-label*="message" i]',
+    ];
+
+    for (const selector of selectors) {
+      const composer = document.querySelector<HTMLElement>(selector);
+      if (composer) {
+        // Get parent container for insertion
+        let parent = composer.parentElement;
+        
+        // Walk up to find suitable container
+        let depth = 0;
+        while (parent && depth < 5) {
+          if (parent.tagName === 'DIV' && parent.offsetHeight > 100) {
+            return parent.parentElement || parent;
+          }
+          parent = parent.parentElement;
+          depth++;
+        }
+      }
+    }
+
     return null;
   }
 
   /**
-   * Mount Preact component inside Shadow DOM
+   * Find right sidebar (alternative anchor)
    */
-  private mountComponent(): void {
-    if (!this.shadowRoot) {
-      throw new Error('Shadow root not initialized');
+  private findSidebarAnchor(): HTMLElement | null {
+    const selectors = [
+      '[role="complementary"]',
+      'aside',
+      '[data-pagelet*="RightRail"]',
+    ];
+
+    for (const selector of selectors) {
+      const sidebar = document.querySelector<HTMLElement>(selector);
+      if (sidebar && sidebar.offsetWidth > 200) {
+        return sidebar;
+      }
     }
 
-    // TODO Phase 2: Render Preact component
-    // render(<AssistantPanel />, this.shadowRoot);
-    
-    logger.info('Preact component mounted (placeholder)');
+    return null;
+  }
+
+  /**
+   * Inject scoped styles into Shadow DOM
+   */
+  private injectStyles(): void {
+    if (!this.shadowRoot) {
+      return;
+    }
+
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+      :host {
+        display: block;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #050505;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      /* Assistant Panel Container */
+      .assistant-panel {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        max-width: 100%;
+      }
+
+      /* Panel Header */
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .panel-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .status-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 500;
+      }
+
+      .status-badge.ready {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .status-badge.loading {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .status-badge.error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      /* Button Styles */
+      button {
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button.primary {
+        background: #0EA5E9;
+        color: white;
+      }
+
+      button.primary:hover:not(:disabled) {
+        background: #0284c7;
+      }
+
+      button.secondary {
+        background: #f3f4f6;
+        color: #374151;
+      }
+
+      button.secondary:hover:not(:disabled) {
+        background: #e5e7eb;
+      }
+
+      button.danger {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      button.danger:hover:not(:disabled) {
+        background: #fecaca;
+      }
+
+      /* Loading Spinner */
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #0EA5E9;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Intent Score Badge */
+      .intent-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .intent-badge.high {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .intent-badge.medium {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .intent-badge.low {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      /* Suggestion Text */
+      .suggestion-text {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 12px 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #111827;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      /* Action Buttons Container */
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .actions button {
+        flex: 1;
+      }
+
+      /* Error Message */
+      .error-message {
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 12px 0;
+        color: #991b1b;
+        font-size: 13px;
+      }
+
+      /* Character Count */
+      .char-count {
+        font-size: 11px;
+        color: #6b7280;
+        text-align: right;
+        margin-top: 4px;
+      }
+
+      .char-count.warning {
+        color: #d97706;
+      }
+
+      /* Pulse Animation for Send Button Highlight */
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+    `;
+
+    this.shadowRoot.appendChild(styleElement);
   }
 }

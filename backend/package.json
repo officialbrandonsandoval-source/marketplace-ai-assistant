@@ -34,6 +34,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "build:test": "npm run build && npm run type-check",
+    "build:test:push": "node scripts/build-test-commit-push.mjs"
   }
 }

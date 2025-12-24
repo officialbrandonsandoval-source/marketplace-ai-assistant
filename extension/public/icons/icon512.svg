@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="90" fill="#0F172A"/>
+  
+  <!-- Chat bubble main body -->
+  <path d="M 180 160 L 360 160 C 382.091 160 400 177.909 400 200 L 400 300 C 400 322.091 382.091 340 360 340 L 240 340 L 190 380 L 190 340 L 180 340 C 157.909 340 140 322.091 140 300 L 140 200 C 140 177.909 157.909 160 180 160 Z" 
+        fill="#0EA5E9" opacity="0.9"/>
+  
+  <!-- Inner chat lines -->
+  <rect x="170" y="210" width="140" height="12" rx="6" fill="#F8FAFC" opacity="0.9"/>
+  <rect x="170" y="240" width="180" height="12" rx="6" fill="#F8FAFC" opacity="0.7"/>
+  <rect x="170" y="270" width="100" height="12" rx="6" fill="#F8FAFC" opacity="0.5"/>
+  
+  <!-- AI circuit nodes - top right cluster -->
+  <circle cx="360" cy="140" r="6" fill="#0EA5E9" opacity="0.6"/>
+  <circle cx="390" cy="160" r="5" fill="#0EA5E9" opacity="0.5"/>
+  <circle cx="380" cy="120" r="4" fill="#0EA5E9" opacity="0.4"/>
+  
+  <!-- Connection lines between nodes -->
+  <line x1="360" y1="140" x2="390" y2="160" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  <line x1="360" y1="140" x2="380" y2="120" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  
+  <!-- AI circuit nodes - bottom left cluster -->
+  <circle cx="150" cy="370" r="5" fill="#0EA5E9" opacity="0.5"/>
+  <circle cx="120" cy="350" r="4" fill="#0EA5E9" opacity="0.4"/>
+  <circle cx="140" cy="395" r="4" fill="#0EA5E9" opacity="0.4"/>
+  
+  <!-- Connection lines -->
+  <line x1="150" y1="370" x2="120" y2="350" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  <line x1="150" y1="370" x2="140" y2="395" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+</svg>

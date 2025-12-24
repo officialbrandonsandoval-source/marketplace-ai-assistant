@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="100" ry="100" fill="#0F172A"/>
+  
+  <!-- Main chat bubble -->
+  <path d="M 256 120 
+           C 180 120 120 170 120 232 
+           C 120 270 140 305 170 328
+           L 165 370
+           L 205 348
+           C 220 352 238 356 256 356
+           C 332 356 392 306 392 244
+           C 392 182 332 120 256 120 Z" 
+        fill="#0EA5E9" 
+        opacity="0.9"/>
+  
+  <!-- AI circuit nodes - top left cluster -->
+  <circle cx="200" cy="180" r="8" fill="#0EA5E9" opacity="0.6"/>
+  <circle cx="230" cy="165" r="6" fill="#0EA5E9" opacity="0.5"/>
+  <circle cx="220" cy="200" r="5" fill="#0EA5E9" opacity="0.4"/>
+  
+  <!-- AI circuit nodes - top right cluster -->
+  <circle cx="312" cy="180" r="8" fill="#0EA5E9" opacity="0.6"/>
+  <circle cx="285" cy="165" r="6" fill="#0EA5E9" opacity="0.5"/>
+  <circle cx="295" cy="200" r="5" fill="#0EA5E9" opacity="0.4"/>
+  
+  <!-- Connecting lines (neural network style) -->
+  <line x1="200" y1="180" x2="230" y2="165" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  <line x1="200" y1="180" x2="220" y2="200" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  <line x1="312" y1="180" x2="285" y2="165" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  <line x1="312" y1="180" x2="295" y2="200" stroke="#0EA5E9" stroke-width="1.5" opacity="0.3"/>
+  
+  <!-- Inner message dots (conversation indicator) -->
+  <circle cx="230" cy="240" r="12" fill="#0F172A" opacity="0.8"/>
+  <circle cx="256" cy="240" r="12" fill="#0F172A" opacity="0.8"/>
+  <circle cx="282" cy="240" r="12" fill="#0F172A" opacity="0.8"/>
+  
+  <!-- Subtle glow effect on main bubble -->
+  <path d="M 256 120 
+           C 180 120 120 170 120 232 
+           C 120 270 140 305 170 328
+           L 165 370
+           L 205 348
+           C 220 352 238 356 256 356
+           C 332 356 392 306 392 244
+           C 392 182 332 120 256 120 Z" 
+        fill="none"
+        stroke="#0EA5E9" 
+        stroke-width="2"
+        opacity="0.3"/>
+</svg>

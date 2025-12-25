@@ -8,6 +8,7 @@ import { threads, actions } from '../db/schema.js';
 import { buildPrompt } from '../services/prompt-builder.js';
 import { callClaude } from '../clients/claude-client.js';
 import { parseClaudeResponse } from '../services/response-parser.js';
+import { getAccountPlan } from '../services/plan.js';
 
 type AuthedRequest = FastifyRequest & {
   accountId?: string;
@@ -99,8 +100,28 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
             },
           });
 
-        const body = request.body as { conversationGoal?: string };
+        const body = request.body as {
+          conversationGoal?: string;
+          customInstructions?: string;
+          savedPresetId?: string;
+        };
         const conversationGoal = body.conversationGoal ?? 'general_assistance';
+        const { plan } = await getAccountPlan(accountId);
+
+        // Enforce paid-tier features on the server to prevent bypassing via extension.
+        if (plan === 'free' && (body.customInstructions || body.savedPresetId)) {
+          request.log.warn(
+            { requestId: request.id, accountId, plan },
+            'Plan upgrade required for advanced settings'
+          );
+          return reply.code(403).send({
+            error: 'PLAN_UPGRADE_REQUIRED',
+            code: 'PLAN_UPGRADE_REQUIRED',
+            message: 'Upgrade your plan to use custom instructions or presets.',
+            statusCode: 403,
+            timestamp: new Date().toISOString(),
+          });
+        }
         const prompt = buildPrompt({
           conversationGoal,
           messages: context.messages,

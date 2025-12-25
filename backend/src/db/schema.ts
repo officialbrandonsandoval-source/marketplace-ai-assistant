@@ -18,6 +18,8 @@ export const senderTypeEnum = pgEnum('sender_type', ['buyer', 'seller', 'claude'
 export const accounts = pgTable('accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
   plan_tier: planTierEnum('plan_tier').notNull().default('free'),
+  plan: planTierEnum('plan').notNull().default('free'),
+  plan_expires_at: timestamp('plan_expires_at'),
   status: statusEnum('status').notNull().default('active'),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow(),
@@ -105,6 +107,23 @@ export const actions = pgTable(
   })
 );
 
+export const accountSettings = pgTable(
+  'account_settings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    account_id: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    global_instructions: text('global_instructions'),
+    goal_presets: jsonb('goal_presets').notNull().default([]),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+    updated_at: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    accountIdIdx: uniqueIndex('idx_account_settings_account_id').on(table.account_id),
+  })
+);
+
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -115,3 +134,5 @@ export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
 export type Action = typeof actions.$inferSelect;
 export type NewAction = typeof actions.$inferInsert;
+export type AccountSetting = typeof accountSettings.$inferSelect;
+export type NewAccountSetting = typeof accountSettings.$inferInsert;

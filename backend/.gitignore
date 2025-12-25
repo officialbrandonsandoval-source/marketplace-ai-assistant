@@ -7,4 +7,5 @@ build/
 logs/
 coverage/
 .DS_Store
-drizzle/
+drizzle/*
+!drizzle/0001_plan_settings.sql

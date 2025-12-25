@@ -1,8 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { redis } from '../redis/client.js';
-import { db } from '../db/client.js';
-import { accounts } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { getAccountPlan } from '../services/plan.js';
 
 const LIMITS = {
   free: parseInt(process.env.RATE_LIMIT_FREE_DAILY || '15', 10),
@@ -30,35 +28,34 @@ export async function rateLimitMiddleware(
   }
 
   try {
-    const [account] = await db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.id, accountId))
-      .limit(1);
-
-    if (!account) {
-      return void reply.code(404).send({
-        error: 'Not Found',
-        message: 'Account not found',
-        statusCode: 404,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-  const planTier = account.plan_tier as keyof typeof LIMITS;
-  const limit = LIMITS[planTier];
-    const key = `rate-limit:${accountId}:daily`;
+    // Resolve plan server-side to enforce paid-tier rate limits.
+    const { plan } = await getAccountPlan(accountId);
+    const limit = LIMITS[plan];
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const key = `rate_limit:${accountId}:${dateKey}`;
 
     const count = await redis.incr(key);
 
     if (count === 1) {
-      await redis.expire(key, 86400);
+      const now = new Date();
+      const endOfDayUtc = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1
+      ));
+      const ttlSeconds = Math.max(1, Math.floor((endOfDayUtc.getTime() - now.getTime()) / 1000));
+      await redis.expire(key, ttlSeconds);
     }
 
     if (count > limit) {
+      request.log.warn(
+        { requestId: request.id, accountId, plan, count, limit },
+        'Rate limit exceeded'
+      );
       return void reply.code(429).send({
-        error: 'Rate limit exceeded',
-        message: `Daily limit of ${limit} requests exceeded`,
+        error: 'RATE_LIMIT_EXCEEDED',
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: `Daily limit of ${limit} requests exceeded. Please try again tomorrow or upgrade your plan.`,
         statusCode: 429,
         timestamp: new Date().toISOString(),
       });
@@ -68,7 +65,17 @@ export async function rateLimitMiddleware(
     reply.header('X-RateLimit-Remaining', Math.max(0, limit - count).toString());
 
   } catch (error) {
-    request.log.error({ error, accountId }, 'Rate limit check failed');
+    if (error instanceof Error && error.message === 'Account not found') {
+      request.log.warn({ requestId: request.id, accountId }, 'Account not found during rate limit');
+      return void reply.code(404).send({
+        error: 'Not Found',
+        message: 'Account not found',
+        statusCode: 404,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    request.log.error({ error, accountId, requestId: request.id }, 'Rate limit check failed');
     // Fail open if Redis/DB issue
   }
 }

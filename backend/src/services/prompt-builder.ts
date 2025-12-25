@@ -11,7 +11,7 @@ export function buildClaudePrompt(context: ThreadContext): string {
     })
     .join('\n');
 
-  return `You are a professional automotive sales assistant on Facebook Marketplace.
+  const prompt = `You are a professional automotive sales assistant on Facebook Marketplace.
 
 LISTING DETAILS:
 - Title: ${listing}
@@ -54,5 +54,13 @@ OUTPUT FORMAT (JSON ONLY, NO MARKDOWN):
   "nextAction": "ask_availability"
 }
 
-Return ONLY valid JSON. No preamble. No markdown code blocks. Just the JSON object.`;
+Return ONLY valid JSON with keys suggestedMessage, intentScore, reasoning, nextAction.
+No preamble. No markdown code blocks. Just the JSON object.`;
+
+  console.info('[Claude] Prompt', {
+    preview: prompt.slice(0, 1000),
+    length: prompt.length,
+  });
+
+  return prompt;
 }

@@ -40,9 +40,8 @@ export function parseClaudeResponse(rawText: string): SuggestionResponse {
   try {
     parsed = JSON.parse(cleaned);
   } catch (error) {
-    throw new Error(
-      `Claude returned invalid JSON: ${error instanceof Error ? error.message : 'Parse failed'}`
-    );
+    const message = error instanceof Error ? error.message : 'Parse failed';
+    throw new Error(`Claude returned invalid JSON: ${message}. Raw response: ${cleaned}`);
   }
 
   if (!isSuggestionResponse(parsed)) {

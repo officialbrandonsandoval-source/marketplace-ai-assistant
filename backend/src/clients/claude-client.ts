@@ -4,7 +4,7 @@ const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
 
 if (!CLAUDE_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY environment variable is required');
+  throw new Error('ANTHROPIC_API_KEY missing');
 }
 
 const anthropic = new Anthropic({
@@ -30,6 +30,12 @@ export interface ClaudeResponse {
 
 export async function callClaude(request: ClaudeRequest): Promise<ClaudeResponse> {
   try {
+    console.info('[Claude] Request', {
+      model: CLAUDE_MODEL,
+      maxTokens: request.maxTokens || 300,
+      promptLength: request.prompt.length,
+    });
+
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: request.maxTokens || 300,

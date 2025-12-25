@@ -14,6 +14,45 @@ type AuthedRequest = FastifyRequest & {
   userId?: string;
 };
 
+function logClaudeError(error: unknown): void {
+  const err = error instanceof Error ? error : null;
+  console.error('[Claude] Error', {
+    name: err?.name ?? 'UnknownError',
+    message: err?.message ?? String(error),
+    stack: err?.stack,
+    cause: err && 'cause' in err ? (err as { cause?: unknown }).cause : undefined,
+  });
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function createBadGatewayError(fastify: FastifyInstance, message: string): Error {
+  const instance = fastify as FastifyInstance & {
+    httpErrors?: { badGateway: (msg: string) => Error };
+  };
+
+  if (instance.httpErrors?.badGateway) {
+    return instance.httpErrors.badGateway(message);
+  }
+
+  const error = new Error(message) as Error & { statusCode?: number };
+  error.statusCode = 502;
+  return error;
+}
+
+function isHttpError(error: unknown): error is { statusCode: number; message: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'statusCode' in error &&
+    typeof (error as { statusCode: unknown }).statusCode === 'number' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+}
+
 export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
     '/suggest',
@@ -72,13 +111,25 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           'Calling Claude API'
         );
 
-        const claudeResponse = await callClaude({
-          prompt,
-          maxTokens: 300,
-          temperature: 0.7,
-        });
+        let claudeResponse;
+        try {
+          claudeResponse = await callClaude({
+            prompt,
+            maxTokens: 300,
+            temperature: 0.7,
+          });
+        } catch (error) {
+          logClaudeError(error);
+          throw createBadGatewayError(fastify, getErrorMessage(error));
+        }
 
-        const suggestion: SuggestionResponse = parseClaudeResponse(claudeResponse.content);
+        let suggestion: SuggestionResponse;
+        try {
+          suggestion = parseClaudeResponse(claudeResponse.content);
+        } catch (error) {
+          logClaudeError(error);
+          throw createBadGatewayError(fastify, getErrorMessage(error));
+        }
 
         await db.insert(actions).values({
           account_id: accountId,
@@ -158,9 +209,18 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           });
         }
 
+        if (isHttpError(error) && error.statusCode === 502) {
+          return reply.code(502).send({
+            error: 'Claude error',
+            message: error.message,
+            statusCode: 502,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         return reply.code(500).send({
           error: 'Suggestion generation failed',
-          message: 'An unexpected error occurred',
+          message: errorMessage,
           statusCode: 500,
           timestamp: new Date().toISOString(),
         });

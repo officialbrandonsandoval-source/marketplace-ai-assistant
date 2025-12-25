@@ -16,9 +16,21 @@ export function buildPrompt(input: {
   let systemInstruction = '';
 
   if (conversationGoal === 'sell_item') {
-    systemInstruction = 'You are an assistant helping a seller close a sale. Your job is to guide the conversation toward commitment without being pushy. Ask one clear next-step question.';
+    systemInstruction = [
+      'You are an assistant helping a seller close a sale.',
+      'Your job is to guide the conversation toward commitment without being pushy.',
+      'Ask one clear next-step question.',
+      'Return ONLY valid JSON with keys: suggestedMessage, intentScore, reasoning, nextAction.',
+      'No markdown. No extra keys. No preamble.',
+    ].join(' ');
   } else {
-    systemInstruction = 'You are a neutral conversation assistant. Do not assume a product, sale, or intent. Your job is to help the user clarify goals and move the conversation forward naturally.';
+    systemInstruction = [
+      'You are a neutral conversation assistant.',
+      'Do not assume a product, sale, or intent.',
+      'Your job is to help the user clarify goals and move the conversation forward naturally.',
+      'Return ONLY valid JSON with keys: suggestedMessage, intentScore, reasoning, nextAction.',
+      'No markdown. No extra keys. No preamble.',
+    ].join(' ');
   }
 
   return {

@@ -219,9 +219,11 @@ export class UIInjector {
 
     const styleElement = document.createElement('style');
     styleElement.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
       :host {
         display: block;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        font-family: 'Space Grotesk', 'Avenir Next', 'Helvetica Neue', sans-serif;
         font-size: 14px;
         line-height: 1.5;
         color: #050505;
@@ -235,9 +237,9 @@ export class UIInjector {
       .assistant-panel {
         background: #ffffff;
         border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 16px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
         max-width: 100%;
       }
 
@@ -247,37 +249,46 @@ export class UIInjector {
         justify-content: space-between;
         align-items: center;
         margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: linear-gradient(120deg, #e0f2fe 0%, #fff7ed 100%);
+        border: 1px solid #dbeafe;
       }
 
       .panel-header h3 {
         margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #111827;
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
       }
 
       .status-badge {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-weight: 500;
+        font-size: 10px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border: 1px solid transparent;
       }
 
       .status-badge.ready {
         background: #d1fae5;
         color: #065f46;
+        border-color: #6ee7b7;
       }
 
       .status-badge.loading {
         background: #fef3c7;
         color: #92400e;
+        border-color: #fcd34d;
       }
 
       .status-badge.error {
         background: #fee2e2;
         color: #991b1b;
+        border-color: #fecaca;
       }
 
       /* Button Styles */

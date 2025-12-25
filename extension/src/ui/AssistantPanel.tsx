@@ -62,6 +62,12 @@ function getGoalLabel(goal: string): string {
   }
 }
 
+function shouldShowUpgrade(errorMessage: string | null): boolean {
+  if (!errorMessage) return false;
+  const lowered = errorMessage.toLowerCase();
+  return lowered.includes('upgrade your plan') || lowered.includes('plan_upgrade_required');
+}
+
 export function AssistantPanel(): h.JSX.Element {
   // Connect to Zustand store
   const isAuthenticated = useStore(state => state.isAuthenticated);
@@ -164,6 +170,10 @@ export function AssistantPanel(): h.JSX.Element {
     }, '*');
   };
 
+  const handleUpgrade = (): void => {
+    window.postMessage({ type: 'OPEN_UPGRADE_URL' }, '*');
+  };
+
   /**
    * Insert draft message into Facebook's composer
    */
@@ -241,6 +251,7 @@ export function AssistantPanel(): h.JSX.Element {
 
   // Render error state
   if (state.error) {
+    const showUpgrade = shouldShowUpgrade(state.error);
     const controls = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <label style={{ fontSize: '12px', color: '#374151' }}>
@@ -298,6 +309,11 @@ export function AssistantPanel(): h.JSX.Element {
           >
             Dismiss
           </button>
+          {showUpgrade && (
+            <button class="secondary" onClick={handleUpgrade}>
+              Upgrade
+            </button>
+          )}
           <button 
             class="primary" 
             onClick={handleGenerateSuggestion}

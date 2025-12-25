@@ -197,6 +197,12 @@ function handleWindowMessage(event: MessageEvent): void {
     const controls = extractSuggestionControls(event.data.payload);
     void requestSuggestion(threadContext, controls);
   }
+
+  if (event.data.type === 'OPEN_UPGRADE_URL') {
+    chrome.runtime.sendMessage({ type: 'OPEN_UPGRADE_URL' }).catch((error) => {
+      logger.error({ error }, 'Failed to open upgrade URL');
+    });
+  }
 }
 
 async function requestSuggestion(

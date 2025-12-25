@@ -19,6 +19,7 @@ const state: ServiceWorkerState = {
 };
 
 const API_BASE_URL = 'https://marketplace-ai-assistant.onrender.com';
+const UPGRADE_URL = 'mailto:support@marketplace-ai-assistant.com?subject=Upgrade%20Request';
 
 interface SuggestionResponse {
   suggestedMessage: string;
@@ -29,7 +30,8 @@ interface SuggestionResponse {
 
 type BackgroundMessage =
   | { type: 'LOGIN_SUCCESS'; payload: { accessToken: string; deviceFingerprint?: string } }
-  | { type: 'REQUEST_SUGGESTION'; payload: unknown };
+  | { type: 'REQUEST_SUGGESTION'; payload: unknown }
+  | { type: 'OPEN_UPGRADE_URL' };
 
 type BackgroundResponse =
   | SuggestionResponse
@@ -74,6 +76,13 @@ chrome.runtime.onMessage.addListener(
       handleSuggestionRequest(message.payload)
         .then((response) => sendResponse(response))
         .catch((error: Error) => sendResponse({ error: error.message }));
+      return true;
+    }
+
+    if (isOpenUpgradeMessage(message)) {
+      chrome.tabs.create({ url: UPGRADE_URL })
+        .then(() => sendResponse({ success: true }))
+        .catch((error: Error) => sendResponse({ success: false, error: error.message }));
       return true;
     }
 
@@ -223,6 +232,10 @@ function isRequestSuggestionMessage(message: unknown): message is Extract<Backgr
   return isRecord(message) &&
     message.type === 'REQUEST_SUGGESTION' &&
     'payload' in message;
+}
+
+function isOpenUpgradeMessage(message: unknown): message is Extract<BackgroundMessage, { type: 'OPEN_UPGRADE_URL' }> {
+  return isRecord(message) && message.type === 'OPEN_UPGRADE_URL';
 }
 
 logger.info('Background service worker loaded');

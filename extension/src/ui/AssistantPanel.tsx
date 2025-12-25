@@ -47,6 +47,21 @@ function isSuggestionErrorPayload(value: unknown): value is SuggestionErrorPaylo
   return isRecord(value) && typeof value.error === 'string';
 }
 
+function getGoalLabel(goal: string): string {
+  switch (goal) {
+    case 'sell_item':
+      return 'Sell Item';
+    case 'book_appointment':
+      return 'Book Appointment';
+    case 'close_deal':
+      return 'Close the Deal';
+    case 'general_assistance':
+      return 'General Help';
+    default:
+      return goal;
+  }
+}
+
 export function AssistantPanel(): h.JSX.Element {
   // Connect to Zustand store
   const isAuthenticated = useStore(state => state.isAuthenticated);
@@ -102,6 +117,26 @@ export function AssistantPanel(): h.JSX.Element {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [currentThread, setActiveSuggestion]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void chrome.storage.local.get(['conversation_goal']).then((result) => {
+      if (!isMounted) return;
+      const storedGoal = result.conversation_goal;
+      if (typeof storedGoal === 'string' && storedGoal.length > 0) {
+        setConversationGoal(storedGoal);
+      }
+    }).catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setConversationGoal]);
+
+  useEffect(() => {
+    void chrome.storage.local.set({ conversation_goal: conversationGoal }).catch(() => undefined);
+  }, [conversationGoal]);
 
   /**
    * Request AI suggestion from background script
@@ -185,7 +220,12 @@ export function AssistantPanel(): h.JSX.Element {
       <div class="assistant-panel">
         <div class="panel-header">
           <h3>AI Assistant</h3>
-          <span class="status-badge loading">Generating...</span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: '999px' }}>
+              Goal: {getGoalLabel(conversationGoal)}
+            </span>
+            <span class="status-badge loading">Generating...</span>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '20px 0' }}>
           <span class="spinner"></span>
@@ -208,6 +248,8 @@ export function AssistantPanel(): h.JSX.Element {
           >
             <option value="general_assistance">General Help</option>
             <option value="sell_item">Sell Item</option>
+            <option value="book_appointment">Book Appointment</option>
+            <option value="close_deal">Close the Deal</option>
           </select>
         </label>
       </div>
@@ -217,7 +259,12 @@ export function AssistantPanel(): h.JSX.Element {
       <div class="assistant-panel">
         <div class="panel-header">
           <h3>AI Assistant</h3>
-          <span class="status-badge error">Error</span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: '999px' }}>
+              Goal: {getGoalLabel(conversationGoal)}
+            </span>
+            <span class="status-badge error">Error</span>
+          </div>
         </div>
         {controls}
         <div class="error-message">{state.error}</div>
@@ -249,6 +296,9 @@ export function AssistantPanel(): h.JSX.Element {
         <div class="panel-header">
           <h3>AI Assistant</h3>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: '999px' }}>
+              Goal: {getGoalLabel(conversationGoal)}
+            </span>
             <span class={`intent-badge ${intentBadge.className}`}>
               {intentBadge.label}
             </span>
@@ -267,6 +317,8 @@ export function AssistantPanel(): h.JSX.Element {
               >
                 <option value="general_assistance">General Help</option>
                 <option value="sell_item">Sell Item</option>
+                <option value="book_appointment">Book Appointment</option>
+                <option value="close_deal">Close the Deal</option>
               </select>
             </label>
           </div>
@@ -300,7 +352,12 @@ export function AssistantPanel(): h.JSX.Element {
     <div class="assistant-panel">
       <div class="panel-header">
         <h3>AI Assistant</h3>
-        <span class="status-badge ready">Ready</span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '11px', background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: '999px' }}>
+            Goal: {getGoalLabel(conversationGoal)}
+          </span>
+          <span class="status-badge ready">Ready</span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -313,6 +370,8 @@ export function AssistantPanel(): h.JSX.Element {
           >
             <option value="general_assistance">General Help</option>
             <option value="sell_item">Sell Item</option>
+            <option value="book_appointment">Book Appointment</option>
+            <option value="close_deal">Close the Deal</option>
           </select>
         </label>
       </div>

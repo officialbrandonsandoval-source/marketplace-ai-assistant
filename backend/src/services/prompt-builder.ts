@@ -21,6 +21,9 @@ export function buildPrompt(input: {
       'Your job is to guide the conversation toward commitment without being pushy.',
       'Ask one clear next-step question.',
       'Return ONLY valid JSON with keys: suggestedMessage, intentScore, reasoning, nextAction.',
+      'intentScore must be a number between 0 and 1.',
+      'nextAction must be one of: ask_availability, send_booking_link, answer_question, close.',
+      'Do not add extra keys.',
       'No markdown. No extra keys. No preamble.',
     ].join(' ');
   } else {
@@ -29,6 +32,9 @@ export function buildPrompt(input: {
       'Do not assume a product, sale, or intent.',
       'Your job is to help the user clarify goals and move the conversation forward naturally.',
       'Return ONLY valid JSON with keys: suggestedMessage, intentScore, reasoning, nextAction.',
+      'intentScore must be a number between 0 and 1.',
+      'nextAction must be one of: ask_availability, send_booking_link, answer_question, close.',
+      'Do not add extra keys.',
       'No markdown. No extra keys. No preamble.',
     ].join(' ');
   }

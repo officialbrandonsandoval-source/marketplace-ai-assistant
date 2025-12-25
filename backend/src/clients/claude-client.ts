@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
+const CLAUDE_MODEL = 'claude-3-5-haiku-20241022';
 
 if (!CLAUDE_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY missing');

@@ -2,7 +2,9 @@ import { Redis } from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -19,14 +21,12 @@ const redisOptions: RedisOptions = {
 
 export const redis = new Redis(redisUrl, redisOptions);
 
-redis.on('error', (error: unknown) => {
-  // eslint-disable-next-line no-console
-  console.error('Redis connection error:', error);
+redis.on('connect', () => {
+  console.info('Redis connected');
 });
 
-redis.on('connect', () => {
-  // eslint-disable-next-line no-console
-  console.log('Redis connected');
+redis.on('error', (error: unknown) => {
+  console.error('Redis connection error:', error);
 });
 
 export async function checkRedisConnection(): Promise<boolean> {
@@ -34,8 +34,16 @@ export async function checkRedisConnection(): Promise<boolean> {
     await redis.ping();
     return true;
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Redis connection failed:', error);
     return false;
+  }
+}
+
+export async function closeRedisConnection(): Promise<void> {
+  try {
+    await redis.quit();
+  } catch (error) {
+    console.error('Redis close failed:', error);
+    redis.disconnect();
   }
 }

@@ -1,14 +1,10 @@
-# Node
-node_modules/
-
-# Build output
-dist/
-
-# Env / secrets
 .env
-
-# Logs
-*.log
-
-# Drizzle migrations output (if generated)
+.env.local
+.env.*.local
+node_modules/
+dist/
+build/
+logs/
+coverage/
+.DS_Store
 drizzle/

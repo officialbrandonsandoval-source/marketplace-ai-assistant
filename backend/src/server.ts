@@ -9,7 +9,9 @@ import { checkDatabaseConnection } from './db/client.js';
 import { checkRedisConnection } from './redis/client.js';
 import { registerJwt } from './auth/jwt.js';
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';

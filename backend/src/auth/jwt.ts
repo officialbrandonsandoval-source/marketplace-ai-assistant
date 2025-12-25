@@ -2,14 +2,28 @@ import type { FastifyInstance } from 'fastify';
 import jwtPlugin from '@fastify/jwt';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '1h';
-const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
+const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY;
+const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY;
 
-if (!JWT_SECRET || JWT_SECRET.length < 32) {
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
+if (JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must be at least 32 characters');
+}
+
+if (!ACCESS_EXPIRY) {
+  throw new Error('JWT_ACCESS_EXPIRY environment variable is required');
+}
+
+if (!REFRESH_EXPIRY) {
+  throw new Error('JWT_REFRESH_EXPIRY environment variable is required');
 }
 
 const JWT_SECRET_STR: string = JWT_SECRET;

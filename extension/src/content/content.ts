@@ -33,6 +33,8 @@ interface SuggestionRequest {
   listingPrice: string | null;
   listingUrl: string | null;
   conversationGoal: string;
+  customInstructions?: string;
+  savedPresetId?: string;
   messages: Array<{
     senderId: string;
     text: string;
@@ -49,6 +51,8 @@ type SuggestionResult = SuggestionResponse | SuggestionErrorResponse;
 
 interface SuggestionControls {
   conversationGoal?: string;
+  customInstructions?: string;
+  savedPresetId?: string;
 }
 
 
@@ -254,6 +258,8 @@ function buildSuggestionPayload(
     ? `https://www.facebook.com/marketplace/item/${listingId}`
     : null;
   const conversationGoal = controls?.conversationGoal?.trim() || 'general_assistance';
+  const customInstructions = controls?.customInstructions?.trim() || undefined;
+  const savedPresetId = controls?.savedPresetId?.trim() || undefined;
 
   return {
     threadId: threadContext.threadId,
@@ -262,6 +268,8 @@ function buildSuggestionPayload(
     listingPrice: listing ? String(listing.price) : null,
     listingUrl,
     conversationGoal,
+    customInstructions,
+    savedPresetId,
     messages: threadContext.messages.map((message) => ({
       senderId: message.senderType,
       text: message.text,
@@ -280,6 +288,14 @@ function extractSuggestionControls(payload: unknown): SuggestionControls | undef
 
   if (typeof payload.conversationGoal === 'string') {
     controls.conversationGoal = payload.conversationGoal;
+  }
+
+  if (typeof payload.customInstructions === 'string') {
+    controls.customInstructions = payload.customInstructions;
+  }
+
+  if (typeof payload.savedPresetId === 'string') {
+    controls.savedPresetId = payload.savedPresetId;
   }
 
   return controls;

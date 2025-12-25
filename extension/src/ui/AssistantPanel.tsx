@@ -78,6 +78,8 @@ export function AssistantPanel(): h.JSX.Element {
     loading: false,
     error: null,
   });
+  const [customInstructions, setCustomInstructions] = useState<string>('');
+  const [savedPresetId, setSavedPresetId] = useState<string>('');
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== window) {
@@ -156,6 +158,8 @@ export function AssistantPanel(): h.JSX.Element {
       type: 'REQUEST_SUGGESTION_FROM_UI',
       payload: {
         conversationGoal,
+        customInstructions: customInstructions.trim() || undefined,
+        savedPresetId: savedPresetId.trim() || undefined,
       },
     }, '*');
   };
@@ -252,6 +256,25 @@ export function AssistantPanel(): h.JSX.Element {
             <option value="close_deal">Close the Deal</option>
           </select>
         </label>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Custom instructions (Pro)
+          <textarea
+            value={customInstructions}
+            onInput={(event) => setCustomInstructions((event.target as HTMLTextAreaElement).value)}
+            rows={3}
+            placeholder="Optional: guidance for the assistant"
+            style={{ width: '100%', marginTop: '4px' }}
+          />
+        </label>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Saved preset ID (Pro)
+          <input
+            value={savedPresetId}
+            onInput={(event) => setSavedPresetId((event.target as HTMLInputElement).value)}
+            placeholder="Optional preset id"
+            style={{ width: '100%', marginTop: '4px' }}
+          />
+        </label>
       </div>
     );
 
@@ -321,6 +344,25 @@ export function AssistantPanel(): h.JSX.Element {
                 <option value="close_deal">Close the Deal</option>
               </select>
             </label>
+            <label style={{ fontSize: '12px', color: '#374151' }}>
+              Custom instructions (Pro)
+              <textarea
+                value={customInstructions}
+                onInput={(event) => setCustomInstructions((event.target as HTMLTextAreaElement).value)}
+                rows={3}
+                placeholder="Optional: guidance for the assistant"
+                style={{ width: '100%', marginTop: '4px' }}
+              />
+            </label>
+            <label style={{ fontSize: '12px', color: '#374151' }}>
+              Saved preset ID (Pro)
+              <input
+                value={savedPresetId}
+                onInput={(event) => setSavedPresetId((event.target as HTMLInputElement).value)}
+                placeholder="Optional preset id"
+                style={{ width: '100%', marginTop: '4px' }}
+              />
+            </label>
           </div>
           <div class="suggestion-text">{activeSuggestion.messageText}</div>
           <div class="suggestion-reasoning">{activeSuggestion.reasoning}</div>
@@ -373,6 +415,25 @@ export function AssistantPanel(): h.JSX.Element {
             <option value="book_appointment">Book Appointment</option>
             <option value="close_deal">Close the Deal</option>
           </select>
+        </label>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Custom instructions (Pro)
+          <textarea
+            value={customInstructions}
+            onInput={(event) => setCustomInstructions((event.target as HTMLTextAreaElement).value)}
+            rows={3}
+            placeholder="Optional: guidance for the assistant"
+            style={{ width: '100%', marginTop: '4px' }}
+          />
+        </label>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Saved preset ID (Pro)
+          <input
+            value={savedPresetId}
+            onInput={(event) => setSavedPresetId((event.target as HTMLInputElement).value)}
+            placeholder="Optional preset id"
+            style={{ width: '100%', marginTop: '4px' }}
+          />
         </label>
       </div>
 

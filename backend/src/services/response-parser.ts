@@ -27,7 +27,18 @@ export function isSuggestionResponse(value: unknown): value is SuggestionRespons
   );
 }
 
-export function parseClaudeResponse(rawText: string): SuggestionResponse {
+const forbiddenPatterns = [
+  /system prompt/i,
+  /system message/i,
+  /developer message/i,
+  /developer instructions?/i,
+  /as an ai/i,
+  /i am an ai/i,
+  /i'm an ai/i,
+  /language model/i,
+];
+
+export function parseClaudeResponse(rawText: string, conversationGoal: string): SuggestionResponse {
   let cleaned = rawText.trim();
 
   if (cleaned.startsWith('```json')) {
@@ -46,6 +57,19 @@ export function parseClaudeResponse(rawText: string): SuggestionResponse {
 
   if (!isSuggestionResponse(parsed)) {
     throw new Error('Claude response does not match SuggestionResponse schema');
+  }
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(parsed.suggestedMessage) || pattern.test(parsed.reasoning)) {
+      throw new Error('Claude response contained disallowed meta content');
+    }
+  }
+
+  if (
+    conversationGoal !== 'sell_item' &&
+    /vehicle|test drive|inventory/i.test(parsed.suggestedMessage)
+  ) {
+    throw new Error('Car language leaked into non-sell flow');
   }
 
   return {

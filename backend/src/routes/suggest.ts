@@ -5,7 +5,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { db } from '../db/client.js';
 import { threads, actions } from '../db/schema.js';
-import { buildClaudePrompt } from '../services/prompt-builder.js';
+import { buildPrompt } from '../services/prompt-builder.js';
 import { callClaude } from '../clients/claude-client.js';
 import { parseClaudeResponse } from '../services/response-parser.js';
 
@@ -99,14 +99,25 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
             },
           });
 
-        const prompt = buildClaudePrompt(context);
+        const body = request.body as { conversationGoal?: string };
+        const conversationGoal = body.conversationGoal ?? 'general_assistance';
+        const prompt = buildPrompt({
+          conversationGoal,
+          messages: context.messages,
+          listingTitle: context.listingTitle ?? undefined,
+          listingPrice: context.listingPrice ?? undefined,
+        });
+
+        const transcript = prompt.messages
+          .map((message) => `${message.isUser ? 'User' : 'Other'}: ${message.text}`)
+          .join('\n') || 'No messages yet.';
 
         request.log.info(
           {
             accountId,
             threadId: context.threadId,
             messageCount: context.messages.length,
-            promptLength: prompt.length,
+            promptLength: prompt.systemInstruction.length + transcript.length,
           },
           'Calling Claude API'
         );
@@ -114,7 +125,8 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
         let claudeResponse;
         try {
           claudeResponse = await callClaude({
-            prompt,
+            system: prompt.systemInstruction,
+            userMessage: transcript,
             maxTokens: 300,
             temperature: 0.7,
           });
@@ -125,7 +137,7 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
 
         let suggestion: SuggestionResponse;
         try {
-          suggestion = parseClaudeResponse(claudeResponse.content);
+          suggestion = parseClaudeResponse(claudeResponse.content, conversationGoal);
         } catch (error) {
           logClaudeError(error);
           throw createBadGatewayError(fastify, getErrorMessage(error));
@@ -144,7 +156,7 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
             input_tokens: claudeResponse.usage.inputTokens,
             output_tokens: claudeResponse.usage.outputTokens,
             duration_ms: Date.now() - startTime,
-            prompt_length: prompt.length,
+            prompt_length: prompt.systemInstruction.length + transcript.length,
           },
           ip_address: request.ip,
           user_agent: request.headers['user-agent'] ?? null,

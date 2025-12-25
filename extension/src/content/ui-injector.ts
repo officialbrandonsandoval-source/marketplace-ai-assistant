@@ -10,7 +10,7 @@
  */
 
 import { render, h } from 'preact';
-import { logger } from '@/utils/logger.ts';
+import { logger } from '@/utils/content-logger.ts';
 import { AssistantPanel } from '@/ui/AssistantPanel.tsx';
 
 const CONTAINER_ID = 'claude-assistant-root';

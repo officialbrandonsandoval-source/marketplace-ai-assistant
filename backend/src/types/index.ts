@@ -10,10 +10,12 @@ export interface RequestContext {
 export const ThreadContextSchema = z.object({
   threadId: z.string(),
   fbThreadId: z.string(),
-  listingId: z.string().nullable(),
+  listingId: z.string().nullable().optional(),
   listingTitle: z.string().nullable(),
   listingPrice: z.string().nullable(),
   listingUrl: z.string().url().nullable(),
+  deviceFingerprint: z.string().min(10).optional(),
+  userMessage: z.string().min(1).optional(),
   messages: z.array(
     z.object({
       senderId: z.string(),

@@ -13,11 +13,38 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@/store/use-store.ts';
-import type { ExtensionMessage, ExtensionMessageResponse, Suggestion } from '@/types/index.ts';
+import type { Suggestion } from '@/types/index.ts';
 
 interface PanelState {
   loading: boolean;
   error: string | null;
+}
+
+interface SuggestionPayload {
+  suggestedMessage: string;
+  intentScore: number;
+  reasoning: string;
+  nextAction: 'ask_availability' | 'send_booking_link' | 'answer_question' | 'close';
+}
+
+interface SuggestionErrorPayload {
+  error: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isSuggestionPayload(value: unknown): value is SuggestionPayload {
+  return isRecord(value) &&
+    typeof value.suggestedMessage === 'string' &&
+    typeof value.intentScore === 'number' &&
+    typeof value.reasoning === 'string' &&
+    typeof value.nextAction === 'string';
+}
+
+function isSuggestionErrorPayload(value: unknown): value is SuggestionErrorPayload {
+  return isRecord(value) && typeof value.error === 'string';
 }
 
 export function AssistantPanel(): h.JSX.Element {
@@ -35,10 +62,50 @@ export function AssistantPanel(): h.JSX.Element {
     error: null,
   });
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window) {
+        return;
+      }
+
+      if (!event.data || typeof event.data.type !== 'string') {
+        return;
+      }
+
+      if (event.data.type === 'SUGGESTION_READY' && isSuggestionPayload(event.data.payload)) {
+        const suggestion: Suggestion = {
+          id: `suggestion-${Date.now()}`,
+          threadId: currentThread?.threadId ?? 'unknown',
+          messageText: event.data.payload.suggestedMessage,
+          intentScore: {
+            type: 'unknown',
+            confidence: event.data.payload.intentScore,
+            flags: [],
+          },
+          reasoning: event.data.payload.reasoning,
+          generatedAt: Date.now(),
+          tokensUsed: 0,
+        };
+
+        setActiveSuggestion(suggestion);
+        setState({ loading: false, error: null });
+        return;
+      }
+
+      if (event.data.type === 'SUGGESTION_ERROR' && isSuggestionErrorPayload(event.data.payload)) {
+        setActiveSuggestion(null);
+        setState({ loading: false, error: event.data.payload.error });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [currentThread, setActiveSuggestion]);
+
   /**
    * Request AI suggestion from background script
    */
-  const handleGenerateSuggestion = async (): Promise<void> => {
+  const handleGenerateSuggestion = (): void => {
     if (!currentThread) {
       setState({ loading: false, error: 'No active thread detected' });
       return;
@@ -46,40 +113,10 @@ export function AssistantPanel(): h.JSX.Element {
 
     setState({ loading: true, error: null });
     clearError();
+    setActiveSuggestion(null);
 
-    try {
-      // Send message to background script to request suggestion
-      const message: ExtensionMessage = {
-        type: 'GET_SUGGESTION',
-        payload: {
-          threadContext: currentThread,
-        },
-        requestId: `req-${Date.now()}`,
-        timestamp: Date.now(),
-      };
-
-      const response = await chrome.runtime.sendMessage<
-        ExtensionMessage,
-        ExtensionMessageResponse<{ suggestion: Suggestion }>
-      >(message);
-
-      if (response.success && response.data) {
-        setActiveSuggestion(response.data.suggestion);
-        setState({ loading: false, error: null });
-      } else {
-        setState({ 
-          loading: false, 
-          error: response.error?.message || 'Failed to generate suggestion' 
-        });
-      }
-
-    } catch (error) {
-      console.error('[Claude] Failed to request suggestion:', error);
-      setState({ 
-        loading: false, 
-        error: 'Failed to communicate with background script' 
-      });
-    }
+    // Trigger suggestion request via content script
+    window.postMessage({ type: 'REQUEST_SUGGESTION_FROM_UI' }, '*');
   };
 
   /**

@@ -10,7 +10,7 @@
  */
 
 import type { ThreadContext } from '@/types/index.ts';
-import { logger } from '@/utils/logger.ts';
+import { logger } from '@/utils/content-logger.ts';
 import type { FacebookMarketplaceAdapter } from './facebook-adapter.ts';
 
 export class DOMWatcher {
@@ -94,7 +94,9 @@ export class DOMWatcher {
    */
   isOnThreadView(): boolean {
     const url = window.location.href;
-    return url.includes('/marketplace/inbox/') && /\/marketplace\/inbox\/\d+/.test(url);
+    const isMarketplaceThread = url.includes('/marketplace/inbox/') && /\/marketplace\/inbox\/\d+/.test(url);
+    const isMessengerThread = url.includes('/messages/t/') && /\/messages\/t\/\d+/.test(url);
+    return isMarketplaceThread || isMessengerThread;
   }
 
   /**

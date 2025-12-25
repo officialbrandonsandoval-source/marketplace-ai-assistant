@@ -10,7 +10,7 @@
  */
 
 import type { ThreadContext, ListingData, Message, DOMElements } from '@/types/index.ts';
-import { logger } from '@/utils/logger.ts';
+import { logger } from '@/utils/content-logger.ts';
 
 export class FacebookMarketplaceAdapter {
   private selectors = {
@@ -444,6 +444,12 @@ export class FacebookMarketplaceAdapter {
    */
   private getThreadId(): string | null {
     try {
+      // Extract from Messenger URL: /messages/t/123456789
+      const messengerMatch = window.location.pathname.match(/\/messages\/t\/(\d+)/);
+      if (messengerMatch && messengerMatch[1]) {
+        return messengerMatch[1];
+      }
+
       // Extract from URL hash: /marketplace/inbox/123456789
       const urlMatch = window.location.pathname.match(/\/marketplace\/inbox\/(\d+)/);
       if (urlMatch && urlMatch[1]) {

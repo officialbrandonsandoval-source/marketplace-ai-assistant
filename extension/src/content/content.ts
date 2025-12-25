@@ -13,11 +13,25 @@
  */
 
 import type { ThreadContext, ExtensionMessage, ExtensionMessageResponse } from '@/types/index.ts';
-import { logger } from '@/utils/logger.ts';
+import { logger } from '@/utils/content-logger.ts';
 import { FacebookMarketplaceAdapter } from './facebook-adapter.ts';
 import { DOMWatcher } from './dom-watcher.ts';
 import { UIInjector } from './ui-injector.ts';
 import { useStore } from '@/store/use-store.ts';
+
+interface SuggestionResponse {
+  suggestedMessage: string;
+  intentScore: number;
+  reasoning: string;
+  nextAction: 'ask_availability' | 'send_booking_link' | 'answer_question' | 'close';
+}
+
+interface SuggestionErrorResponse {
+  error: string;
+}
+
+type SuggestionResult = SuggestionResponse | SuggestionErrorResponse;
+
 
 // Global state flag to prevent multiple initializations
 let isInitialized = false;
@@ -118,8 +132,12 @@ function handleWindowMessage(event: MessageEvent): void {
     return;
   }
 
-  // Check for our custom message type
-  if (event.data && event.data.type === 'CLAUDE_USE_DRAFT') {
+  if (!event.data || typeof event.data.type !== 'string') {
+    return;
+  }
+
+  // Check for our custom message types
+  if (event.data.type === 'CLAUDE_USE_DRAFT') {
     try {
       const { message } = event.data.payload;
       
@@ -132,7 +150,86 @@ function handleWindowMessage(event: MessageEvent): void {
     } catch (error) {
       logger.error({ error }, 'Failed to insert draft message');
     }
+    return;
   }
+
+  if (event.data.type === 'REQUEST_SUGGESTION_FROM_UI') {
+    if (!adapter) {
+      window.postMessage({
+        type: 'SUGGESTION_ERROR',
+        payload: { error: 'Adapter not initialized' },
+      }, '*');
+      return;
+    }
+
+    const threadContext = adapter.extractThreadContext();
+    if (!threadContext) {
+      window.postMessage({
+        type: 'SUGGESTION_ERROR',
+        payload: { error: 'Could not extract thread context' },
+      }, '*');
+      return;
+    }
+
+    void requestSuggestion(threadContext);
+  }
+}
+
+async function requestSuggestion(threadContext: ThreadContext): Promise<void> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: 'REQUEST_SUGGESTION',
+      payload: threadContext,
+    })) as SuggestionResult;
+
+    if (!isRecord(response)) {
+      window.postMessage({
+        type: 'SUGGESTION_ERROR',
+        payload: { error: 'Invalid response from background' },
+      }, '*');
+      return;
+    }
+
+    if ('error' in response && typeof response.error === 'string') {
+      window.postMessage({
+        type: 'SUGGESTION_ERROR',
+        payload: { error: response.error },
+      }, '*');
+      return;
+    }
+
+    if (!isSuggestionResponse(response)) {
+      window.postMessage({
+        type: 'SUGGESTION_ERROR',
+        payload: { error: 'Malformed suggestion response' },
+      }, '*');
+      return;
+    }
+
+    window.postMessage({
+      type: 'SUGGESTION_READY',
+      payload: response,
+    }, '*');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to request suggestion';
+    logger.error({ error }, 'Failed to request suggestion');
+    window.postMessage({
+      type: 'SUGGESTION_ERROR',
+      payload: { error: message },
+    }, '*');
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isSuggestionResponse(value: unknown): value is SuggestionResponse {
+  return isRecord(value) &&
+    typeof value.suggestedMessage === 'string' &&
+    typeof value.intentScore === 'number' &&
+    typeof value.reasoning === 'string' &&
+    typeof value.nextAction === 'string';
 }
 
 /**
@@ -190,8 +287,10 @@ async function waitForPageReady(): Promise<void> {
  */
 function isMarketplaceMessagesPage(): boolean {
   const url = window.location.href;
-  return url.includes('facebook.com/marketplace') && 
-         (url.includes('/inbox') || url.includes('/you/selling'));
+  const isMarketplaceInbox = url.includes('facebook.com/marketplace') &&
+    (url.includes('/inbox') || url.includes('/you/selling'));
+  const isMessengerThread = url.includes('facebook.com/messages/t/');
+  return isMarketplaceInbox || isMessengerThread;
 }
 
 /**

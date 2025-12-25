@@ -7,7 +7,6 @@ import { suggestRoutes } from './routes/suggest.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { checkDatabaseConnection } from './db/client.js';
 import { checkRedisConnection } from './redis/client.js';
-import { registerJwt } from './auth/jwt.js';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
@@ -26,9 +25,6 @@ const fastify = Fastify({
         : undefined,
   },
 });
-
-// JWT
-await registerJwt(fastify);
 
 // CORS
 const corsOrigin: OriginFunction = (origin, callback) => {

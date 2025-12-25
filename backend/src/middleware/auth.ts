@@ -23,7 +23,7 @@ export async function authMiddleware(
     }
 
     const token = authHeader.substring(7);
-  const payload = verifyToken(request.server, token);
+    const payload = verifyToken(token);
 
     if (payload.type !== 'access') {
       return void reply.code(401).send({

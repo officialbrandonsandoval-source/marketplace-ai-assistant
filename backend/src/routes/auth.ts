@@ -53,8 +53,8 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         .where(eq(users.id, user.id));
 
       // Generate tokens
-  const accessToken = signAccessToken(fastify, user.account_id, user.id);
-  const refreshToken = signRefreshToken(fastify, user.account_id, user.id);
+      const accessToken = signAccessToken(user.account_id, user.id);
+      const refreshToken = signRefreshToken(user.account_id, user.id);
 
       // Log action
       await db.insert(actions).values({
@@ -90,7 +90,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     try {
       const body = RefreshSchema.parse(request.body);
 
-  const payload = verifyToken(fastify, body.refreshToken);
+      const payload = verifyToken(body.refreshToken);
 
       if (payload.type !== 'refresh') {
         return reply.code(401).send({
@@ -101,7 +101,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-  const accessToken = signAccessToken(fastify, payload.accountId, payload.userId);
+      const accessToken = signAccessToken(payload.accountId, payload.userId);
 
       return reply.send({ accessToken });
 

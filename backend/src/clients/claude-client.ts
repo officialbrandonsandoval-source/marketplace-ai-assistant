@@ -12,7 +12,8 @@ const anthropic = new Anthropic({
 });
 
 export interface ClaudeRequest {
-  prompt: string;
+  system: string;
+  userMessage: string;
   maxTokens?: number;
   temperature?: number;
 }
@@ -33,17 +34,19 @@ export async function callClaude(request: ClaudeRequest): Promise<ClaudeResponse
     console.info('[Claude] Request', {
       model: CLAUDE_MODEL,
       maxTokens: request.maxTokens || 300,
-      promptLength: request.prompt.length,
+      systemLength: request.system.length,
+      userMessageLength: request.userMessage.length,
     });
 
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: request.maxTokens || 300,
       temperature: request.temperature || 0.7,
+      system: request.system,
       messages: [
         {
           role: 'user',
-          content: request.prompt,
+          content: request.userMessage,
         },
       ],
     });

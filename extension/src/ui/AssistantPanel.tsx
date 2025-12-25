@@ -53,6 +53,8 @@ export function AssistantPanel(): h.JSX.Element {
   const currentThread = useStore(state => state.currentThread);
   const activeSuggestion = useStore(state => state.activeSuggestion);
   const rateLimitStatus = useStore(state => state.rateLimitStatus);
+  const conversationGoal = useStore(state => state.conversationGoal);
+  const setConversationGoal = useStore(state => state.setConversationGoal);
   const setActiveSuggestion = useStore(state => state.setActiveSuggestion);
   const clearError = useStore(state => state.clearError);
 
@@ -61,7 +63,6 @@ export function AssistantPanel(): h.JSX.Element {
     loading: false,
     error: null,
   });
-
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== window) {
@@ -116,7 +117,12 @@ export function AssistantPanel(): h.JSX.Element {
     setActiveSuggestion(null);
 
     // Trigger suggestion request via content script
-    window.postMessage({ type: 'REQUEST_SUGGESTION_FROM_UI' }, '*');
+    window.postMessage({
+      type: 'REQUEST_SUGGESTION_FROM_UI',
+      payload: {
+        conversationGoal,
+      },
+    }, '*');
   };
 
   /**
@@ -191,12 +197,29 @@ export function AssistantPanel(): h.JSX.Element {
 
   // Render error state
   if (state.error) {
+    const controls = (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          What are you trying to accomplish?
+          <select
+            value={conversationGoal}
+            onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
+            style={{ width: '100%', marginTop: '4px' }}
+          >
+            <option value="general_assistance">General Help</option>
+            <option value="sell_item">Sell Item</option>
+          </select>
+        </label>
+      </div>
+    );
+
     return (
       <div class="assistant-panel">
         <div class="panel-header">
           <h3>AI Assistant</h3>
           <span class="status-badge error">Error</span>
         </div>
+        {controls}
         <div class="error-message">{state.error}</div>
         <div class="actions">
           <button 
@@ -234,7 +257,21 @@ export function AssistantPanel(): h.JSX.Element {
         </div>
 
         <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+            <label style={{ fontSize: '12px', color: '#374151' }}>
+              What are you trying to accomplish?
+              <select
+                value={conversationGoal}
+                onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
+                style={{ width: '100%', marginTop: '4px' }}
+              >
+                <option value="general_assistance">General Help</option>
+                <option value="sell_item">Sell Item</option>
+              </select>
+            </label>
+          </div>
           <div class="suggestion-text">{activeSuggestion.messageText}</div>
+          <div class="suggestion-reasoning">{activeSuggestion.reasoning}</div>
           <div class={`char-count ${getCharCountClass(charCount)}`}>
             {charCount} characters {charCount > 200 && '(consider shortening)'}
           </div>
@@ -264,6 +301,20 @@ export function AssistantPanel(): h.JSX.Element {
       <div class="panel-header">
         <h3>AI Assistant</h3>
         <span class="status-badge ready">Ready</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          What are you trying to accomplish?
+          <select
+            value={conversationGoal}
+            onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
+            style={{ width: '100%', marginTop: '4px' }}
+          >
+            <option value="general_assistance">General Help</option>
+            <option value="sell_item">Sell Item</option>
+          </select>
+        </label>
       </div>
 
       <div style={{ marginBottom: '12px', color: '#6b7280', fontSize: '13px' }}>

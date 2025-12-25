@@ -5,7 +5,7 @@ import { accounts } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const LIMITS = {
-  free: parseInt(process.env.RATE_LIMIT_FREE_DAILY || '10', 10),
+  free: parseInt(process.env.RATE_LIMIT_FREE_DAILY || '15', 10),
   pro: parseInt(process.env.RATE_LIMIT_PRO_DAILY || '100', 10),
   enterprise: parseInt(process.env.RATE_LIMIT_ENTERPRISE_DAILY || '1000', 10),
 } as const;

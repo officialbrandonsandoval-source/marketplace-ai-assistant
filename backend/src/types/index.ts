@@ -14,6 +14,9 @@ export const ThreadContextSchema = z.object({
   listingTitle: z.string().nullable(),
   listingPrice: z.string().nullable(),
   listingUrl: z.string().url().nullable(),
+  conversationGoal: z.string().min(1).optional(),
+  userInstructions: z.string().min(1).optional(),
+  persistentContext: z.string().min(1).optional(),
   deviceFingerprint: z.string().min(10).optional(),
   userMessage: z.string().min(1).optional(),
   messages: z.array(

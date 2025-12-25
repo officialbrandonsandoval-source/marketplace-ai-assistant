@@ -26,11 +26,30 @@ interface SuggestionResponse {
   nextAction: 'ask_availability' | 'send_booking_link' | 'answer_question' | 'close';
 }
 
+interface SuggestionRequest {
+  threadId: string;
+  fbThreadId: string;
+  listingTitle: string | null;
+  listingPrice: string | null;
+  listingUrl: string | null;
+  conversationGoal: string;
+  messages: Array<{
+    senderId: string;
+    text: string;
+    timestamp: number;
+    isUser: boolean;
+  }>;
+}
+
 interface SuggestionErrorResponse {
   error: string;
 }
 
 type SuggestionResult = SuggestionResponse | SuggestionErrorResponse;
+
+interface SuggestionControls {
+  conversationGoal?: string;
+}
 
 
 // Global state flag to prevent multiple initializations
@@ -171,15 +190,20 @@ function handleWindowMessage(event: MessageEvent): void {
       return;
     }
 
-    void requestSuggestion(threadContext);
+    const controls = extractSuggestionControls(event.data.payload);
+    void requestSuggestion(threadContext, controls);
   }
 }
 
-async function requestSuggestion(threadContext: ThreadContext): Promise<void> {
+async function requestSuggestion(
+  threadContext: ThreadContext,
+  controls?: SuggestionControls
+): Promise<void> {
   try {
+    const payload = buildSuggestionPayload(threadContext, controls);
     const response = (await chrome.runtime.sendMessage({
       type: 'REQUEST_SUGGESTION',
-      payload: threadContext,
+      payload,
     })) as SuggestionResult;
 
     if (!isRecord(response)) {
@@ -218,6 +242,47 @@ async function requestSuggestion(threadContext: ThreadContext): Promise<void> {
       payload: { error: message },
     }, '*');
   }
+}
+
+function buildSuggestionPayload(
+  threadContext: ThreadContext,
+  controls?: SuggestionControls
+): SuggestionRequest {
+  const listing = threadContext.listingData;
+  const listingId = listing?.id ?? null;
+  const listingUrl = listingId && /^\d+$/.test(listingId)
+    ? `https://www.facebook.com/marketplace/item/${listingId}`
+    : null;
+  const conversationGoal = controls?.conversationGoal?.trim() || 'general_assistance';
+
+  return {
+    threadId: threadContext.threadId,
+    fbThreadId: threadContext.threadId,
+    listingTitle: listing?.title ?? null,
+    listingPrice: listing ? String(listing.price) : null,
+    listingUrl,
+    conversationGoal,
+    messages: threadContext.messages.map((message) => ({
+      senderId: message.senderType,
+      text: message.text,
+      timestamp: message.timestamp,
+      isUser: message.senderType === 'user',
+    })),
+  };
+}
+
+function extractSuggestionControls(payload: unknown): SuggestionControls | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  const controls: SuggestionControls = {};
+
+  if (typeof payload.conversationGoal === 'string') {
+    controls.conversationGoal = payload.conversationGoal;
+  }
+
+  return controls;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

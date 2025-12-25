@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { authRoutes } from './routes/auth.js';
 import { suggestRoutes } from './routes/suggest.js';
 import { settingsRoutes } from './routes/settings.js';
+import { adminRoutes } from './routes/admin.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { checkDatabaseConnection } from './db/client.js';
 import { checkRedisConnection } from './redis/client.js';
@@ -65,6 +66,7 @@ fastify.get('/health', async () => {
 await fastify.register(authRoutes);
 await fastify.register(suggestRoutes);
 await fastify.register(settingsRoutes);
+await fastify.register(adminRoutes);
 
 // Start server
 try {

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Marketplace AI Assistant</title>
+    <meta
+      name="description"
+      content="Marketplace AI Assistant helps sellers write better replies, faster, with human-in-the-loop safety."
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap");
+
+      :root {
+        --ink: #111827;
+        --muted: #6b7280;
+        --accent: #0ea5e9;
+        --accent-dark: #0369a1;
+        --warm: #f59e0b;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --line: #e5e7eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top, #e0f2fe 0%, var(--bg) 48%);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .page {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 48px 24px 80px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 6px 14px;
+        background: #111827;
+        color: #f8fafc;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .hero {
+        margin-top: 72px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+        gap: 36px;
+        align-items: center;
+      }
+
+      .hero h1 {
+        font-size: clamp(32px, 4vw, 54px);
+        margin: 16px 0;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+
+      .hero p {
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .cta-row {
+        display: flex;
+        gap: 16px;
+        margin-top: 28px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+      }
+
+      .btn.primary {
+        background: var(--accent);
+        color: white;
+      }
+
+      .btn.primary:hover {
+        background: var(--accent-dark);
+      }
+
+      .btn.secondary {
+        border-color: var(--line);
+        background: white;
+        color: var(--ink);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+      }
+
+      .stat {
+        font-family: "DM Mono", ui-monospace, monospace;
+        color: var(--accent-dark);
+        font-weight: 500;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-top: 48px;
+      }
+
+      .section {
+        margin-top: 64px;
+      }
+
+      .section h2 {
+        font-size: 28px;
+        margin-bottom: 16px;
+      }
+
+      .section p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .pricing {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+      }
+
+      .price {
+        font-size: 30px;
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+
+      .highlight {
+        border: 2px solid var(--accent);
+      }
+
+      footer {
+        margin-top: 72px;
+        border-top: 1px solid var(--line);
+        padding-top: 24px;
+        font-size: 14px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #ecfeff;
+        color: #0e7490;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      @media (max-width: 900px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">Marketplace AI Assistant</div>
+        <div class="pill">Human-in-the-loop AI</div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <span class="badge">Chrome extension</span>
+          <h1>Reply faster, close more conversations.</h1>
+          <p>
+            Marketplace AI Assistant helps sellers craft natural, goal-driven
+            replies while keeping the human in control. Use it across
+            Marketplace, services, or any conversation that needs faster follow
+            up.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="mailto:support@marketplace-ai-assistant.com?subject=Upgrade%20Request">
+              Request Upgrade
+            </a>
+            <a class="btn secondary" href="mailto:support@marketplace-ai-assistant.com">
+              Contact Support
+            </a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">Goal-driven suggestions</div>
+          <h3>Built for speed + safety</h3>
+          <p>
+            Draft replies in seconds, keep your tone consistent, and decide
+            exactly what the assistant should do. No auto-send. No surprises.
+          </p>
+          <div class="grid">
+            <div class="card">
+              <div class="stat">+15%</div>
+              <p>Faster response times on average.</p>
+            </div>
+            <div class="card">
+              <div class="stat">100%</div>
+              <p>You stay in control of every message.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>How it works</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>1. Detect the thread</h3>
+            <p>Our extension reads the conversation context on the page.</p>
+          </div>
+          <div class="card">
+            <h3>2. Generate a draft</h3>
+            <p>Claude creates a reply based on your selected goal.</p>
+          </div>
+          <div class="card">
+            <h3>3. You decide</h3>
+            <p>Insert, edit, or dismiss. We never send messages for you.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Plans</h2>
+        <div class="pricing">
+          <div class="card">
+            <h3>Free</h3>
+            <p class="price">$0</p>
+            <p>Core assistance and basic daily limits.</p>
+          </div>
+          <div class="card highlight">
+            <h3>Pro</h3>
+            <p class="price">$19 / month</p>
+            <p>Custom instructions, presets, and higher rate limits.</p>
+          </div>
+          <div class="card">
+            <h3>Enterprise</h3>
+            <p class="price">Let’s talk</p>
+            <p>Team seats, custom workflows, and priority support.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Security & Support</h2>
+        <p>
+          We never auto-send messages and we keep your data minimal. If you have
+          questions, reach us anytime at
+          <a href="mailto:support@marketplace-ai-assistant.com">support@marketplace-ai-assistant.com</a>.
+        </p>
+      </section>
+
+      <footer>
+        <span>© 2025 Marketplace AI Assistant</span>
+        <span>Built for fast, human-first conversations.</span>
+      </footer>
+    </div>
+  </body>
+</html>

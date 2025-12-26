@@ -65,29 +65,46 @@ chrome.runtime.onMessage.addListener(
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: BackgroundResponse) => void
   ): boolean => {
-    if (isLoginSuccessMessage(message)) {
-      storeAccessToken(message.payload.accessToken, message.payload.deviceFingerprint)
-        .then(() => sendResponse({ success: true }))
-        .catch((error: Error) => sendResponse({ success: false, error: error.message }));
-      return true;
-    }
+    try {
+      if (isLoginSuccessMessage(message)) {
+        storeAccessToken(message.payload.accessToken, message.payload.deviceFingerprint)
+          .then(() => sendResponse({ success: true }))
+          .catch((error: Error) => sendResponse({ success: false, error: error.message }));
+        return true;
+      }
 
-    if (isRequestSuggestionMessage(message)) {
-      handleSuggestionRequest(message.payload)
-        .then((response) => sendResponse(response))
-        .catch((error: Error) => sendResponse({ error: error.message }));
-      return true;
-    }
+      if (isRequestSuggestionMessage(message)) {
+        handleSuggestionRequest(message.payload)
+          .then((response) => sendResponse(response))
+          .catch((error: Error) => sendResponse({ error: error.message }));
+        return true;
+      }
 
-    if (isOpenUpgradeMessage(message)) {
-      chrome.tabs.create({ url: UPGRADE_URL })
-        .then(() => sendResponse({ success: true }))
-        .catch((error: Error) => sendResponse({ success: false, error: error.message }));
-      return true;
-    }
+      if (isOpenUpgradeMessage(message)) {
+        if (!chrome.tabs || !chrome.tabs.create) {
+          sendResponse({ success: false, error: 'Upgrade URL unavailable' });
+          return true;
+        }
 
-    sendResponse({ success: false, error: 'Unknown message type' });
-    return true;
+        chrome.tabs.create({ url: UPGRADE_URL }, () => {
+          const lastError = chrome.runtime.lastError;
+          if (lastError) {
+            const errMessage = lastError.message || 'Failed to open upgrade URL';
+            sendResponse({ success: false, error: errMessage });
+          } else {
+            sendResponse({ success: true });
+          }
+        });
+        return true;
+      }
+
+      sendResponse({ success: false, error: 'Unknown message type' });
+      return true;
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : 'Unknown error';
+      sendResponse({ success: false, error: messageText });
+      return false;
+    }
   }
 );
 

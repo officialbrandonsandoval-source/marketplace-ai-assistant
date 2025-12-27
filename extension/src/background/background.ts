@@ -155,27 +155,17 @@ async function handleSuggestionRequest(payload: unknown): Promise<SuggestionResp
   };
 
   const accessToken = await getAccessTokenOrLogin();
+  const initialResponse = await fetchSuggestion(accessToken, requestPayload);
 
-  const response = await fetch(`${API_BASE_URL}/suggest`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(requestPayload),
-  });
-
-  if (!response.ok) {
-    const message = await extractErrorMessage(response);
-    throw new Error(message || `API error: ${response.status}`);
+  if (initialResponse.status === 401) {
+    await clearAccessToken();
+    state.isAuthenticated = false;
+    const refreshedToken = await getAccessTokenOrLogin();
+    const retryResponse = await fetchSuggestion(refreshedToken, requestPayload);
+    return await parseSuggestionResponse(retryResponse);
   }
 
-  const data = (await response.json()) as unknown;
-  if (!isSuggestionResponse(data)) {
-    throw new Error('Invalid suggestion response');
-  }
-
-  return data;
+  return await parseSuggestionResponse(initialResponse);
 }
 
 async function getAccessTokenOrLogin(): Promise<string> {
@@ -200,6 +190,31 @@ async function extractErrorMessage(response: Response): Promise<string | null> {
   }
 }
 
+async function fetchSuggestion(accessToken: string, payload: Record<string, unknown>): Promise<Response> {
+  return fetch(`${API_BASE_URL}/suggest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function parseSuggestionResponse(response: Response): Promise<SuggestionResponse> {
+  if (!response.ok) {
+    const message = await extractErrorMessage(response);
+    throw new Error(message || `API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as unknown;
+  if (!isSuggestionResponse(data)) {
+    throw new Error('Invalid suggestion response');
+  }
+
+  return data;
+}
+
 async function getAccessToken(): Promise<string | null> {
   const result = await chrome.storage.local.get(['access_token']);
   return typeof result.access_token === 'string' ? result.access_token : null;
@@ -211,6 +226,10 @@ async function storeAccessToken(accessToken: string, deviceFingerprint?: string)
     payload.device_fingerprint = deviceFingerprint;
   }
   await chrome.storage.local.set(payload);
+}
+
+async function clearAccessToken(): Promise<void> {
+  await chrome.storage.local.remove(['access_token']);
 }
 
 async function getOrCreateDeviceFingerprint(): Promise<string> {

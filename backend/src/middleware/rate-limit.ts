@@ -36,6 +36,7 @@ export async function rateLimitMiddleware(
 
     const count = await redis.incr(key);
 
+    let resetAt = 0;
     if (count === 1) {
       const now = new Date();
       const endOfDayUtc = new Date(Date.UTC(
@@ -45,6 +46,12 @@ export async function rateLimitMiddleware(
       ));
       const ttlSeconds = Math.max(1, Math.floor((endOfDayUtc.getTime() - now.getTime()) / 1000));
       await redis.expire(key, ttlSeconds);
+      resetAt = endOfDayUtc.getTime();
+    } else {
+      const ttlSeconds = await redis.ttl(key);
+      if (ttlSeconds > 0) {
+        resetAt = Date.now() + ttlSeconds * 1000;
+      }
     }
 
     if (count > limit) {
@@ -63,6 +70,9 @@ export async function rateLimitMiddleware(
 
     reply.header('X-RateLimit-Limit', limit.toString());
     reply.header('X-RateLimit-Remaining', Math.max(0, limit - count).toString());
+    if (resetAt > 0) {
+      reply.header('X-RateLimit-Reset', resetAt.toString());
+    }
 
   } catch (error) {
     if (error instanceof Error && error.message === 'Account not found') {

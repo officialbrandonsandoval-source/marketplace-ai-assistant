@@ -28,6 +28,18 @@ const fastify = Fastify({
   },
 });
 
+fastify.addHook('onRequest', async (request) => {
+  request.log.info(
+    {
+      method: request.method,
+      url: request.url,
+      requestId: request.id,
+      ip: request.ip,
+    },
+    'Incoming request'
+  );
+});
+
 // CORS
 const corsOrigin: OriginFunction = (origin, callback) => {
   if (!origin) return callback(null, true);

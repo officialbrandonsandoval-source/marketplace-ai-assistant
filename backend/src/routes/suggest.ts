@@ -1,58 +1,22 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ThreadContextSchema, type SuggestionResponse } from '../types/index.js';
+import { ThreadContextSchema } from '../types/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { db } from '../db/client.js';
 import { threads, actions } from '../db/schema.js';
-import { buildPrompt } from '../services/prompt-builder.js';
-import { callClaude } from '../clients/claude-client.js';
-import { parseClaudeResponse } from '../services/response-parser.js';
 import { getAccountPlan } from '../services/plan.js';
+import { claudeQueue } from '../queue/claude-queue.js';
+import {
+  setSuggestionResult,
+  getSuggestionResult,
+  type SuggestionJobResult,
+} from '../services/suggestion-results.js';
 
 type AuthedRequest = FastifyRequest & {
   accountId?: string;
   userId?: string;
 };
-
-function logClaudeError(error: unknown): void {
-  const err = error instanceof Error ? error : null;
-  console.error('[Claude] Error', {
-    name: err?.name ?? 'UnknownError',
-    message: err?.message ?? String(error),
-    stack: err?.stack,
-    cause: err && 'cause' in err ? (err as { cause?: unknown }).cause : undefined,
-  });
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function createBadGatewayError(fastify: FastifyInstance, message: string): Error {
-  const instance = fastify as FastifyInstance & {
-    httpErrors?: { badGateway: (msg: string) => Error };
-  };
-
-  if (instance.httpErrors?.badGateway) {
-    return instance.httpErrors.badGateway(message);
-  }
-
-  const error = new Error(message) as Error & { statusCode?: number };
-  error.statusCode = 502;
-  return error;
-}
-
-function isHttpError(error: unknown): error is { statusCode: number; message: string } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'statusCode' in error &&
-    typeof (error as { statusCode: unknown }).statusCode === 'number' &&
-    'message' in error &&
-    typeof (error as { message: unknown }).message === 'string'
-  );
-}
 
 export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
@@ -122,82 +86,57 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
             timestamp: new Date().toISOString(),
           });
         }
-        const prompt = buildPrompt({
-          conversationGoal,
-          messages: context.messages,
-          listingTitle: context.listingTitle ?? undefined,
-          listingPrice: context.listingPrice ?? undefined,
-        });
-
-        const transcript = prompt.messages
-          .map((message) => `${message.isUser ? 'User' : 'Other'}: ${message.text}`)
-          .join('\n') || 'No messages yet.';
-
-        request.log.info(
-          {
-            accountId,
-            threadId: context.threadId,
-            messageCount: context.messages.length,
-            promptLength: prompt.systemInstruction.length + transcript.length,
-          },
-          'Calling Claude API'
-        );
-
-        let claudeResponse;
-        try {
-          claudeResponse = await callClaude({
-            system: prompt.systemInstruction,
-            userMessage: transcript,
-            maxTokens: 300,
-            temperature: 0.7,
-          });
-        } catch (error) {
-          logClaudeError(error);
-          throw createBadGatewayError(fastify, getErrorMessage(error));
-        }
-
-        let suggestion: SuggestionResponse;
-        try {
-          suggestion = parseClaudeResponse(claudeResponse.content, conversationGoal);
-        } catch (error) {
-          logClaudeError(error);
-          throw createBadGatewayError(fastify, getErrorMessage(error));
-        }
 
         await db.insert(actions).values({
           account_id: accountId,
           user_id: userId,
-          action_type: 'suggestion_generated',
+          action_type: 'suggestion_requested',
           metadata: {
             thread_id: context.threadId,
             message_count: context.messages.length,
-            intent_score: suggestion.intentScore,
-            next_action: suggestion.nextAction,
-            tokens_used: claudeResponse.usage.totalTokens,
-            input_tokens: claudeResponse.usage.inputTokens,
-            output_tokens: claudeResponse.usage.outputTokens,
-            duration_ms: Date.now() - startTime,
-            prompt_length: prompt.systemInstruction.length + transcript.length,
+            conversation_goal: conversationGoal,
           },
           ip_address: request.ip,
           user_agent: request.headers['user-agent'] ?? null,
         });
 
+        const job = await claudeQueue.add('generate', {
+          accountId,
+          userId,
+          threadId: context.threadId,
+          fbThreadId: context.fbThreadId,
+          listingTitle: context.listingTitle,
+          listingPrice: context.listingPrice,
+          listingUrl: context.listingUrl,
+          conversationGoal,
+          customInstructions: body.customInstructions,
+          savedPresetId: body.savedPresetId,
+          messages: context.messages,
+          requestId: request.id,
+        });
+
+        const jobId = String(job.id ?? '');
+        const pending: SuggestionJobResult = {
+          jobId,
+          status: 'pending',
+          suggestion: null,
+          error: null,
+          updatedAt: new Date().toISOString(),
+        };
+
+        await setSuggestionResult(accountId, jobId, pending);
+
         request.log.info(
           {
             accountId,
             threadId: context.threadId,
-            inputTokens: claudeResponse.usage.inputTokens,
-            outputTokens: claudeResponse.usage.outputTokens,
-            totalTokens: claudeResponse.usage.totalTokens,
-            intentScore: suggestion.intentScore,
-            nextAction: suggestion.nextAction,
+            jobId,
             durationMs: Date.now() - startTime,
           },
-          'Claude API call successful'
+          'Suggestion job queued'
         );
 
-        return reply.send(suggestion);
+        return reply.send(pending);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         const stack = error instanceof Error ? error.stack : undefined;
@@ -242,15 +181,6 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           });
         }
 
-        if (isHttpError(error) && error.statusCode === 502) {
-          return reply.code(502).send({
-            error: 'Claude error',
-            message: error.message,
-            statusCode: 502,
-            timestamp: new Date().toISOString(),
-          });
-        }
-
         return reply.code(500).send({
           error: 'Suggestion generation failed',
           message: errorMessage,
@@ -258,6 +188,49 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           timestamp: new Date().toISOString(),
         });
       }
+    }
+  );
+
+  fastify.get(
+    '/suggest/:jobId',
+    {
+      preHandler: [authMiddleware],
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { accountId } = request as AuthedRequest;
+      const params = request.params as { jobId?: string };
+      const jobId = typeof params.jobId === 'string' ? params.jobId : '';
+
+      if (!accountId) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Missing auth context',
+          statusCode: 401,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (!jobId) {
+        return reply.code(400).send({
+          error: 'Validation error',
+          message: 'jobId is required',
+          statusCode: 400,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const result = await getSuggestionResult(accountId, jobId);
+
+      if (!result) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Suggestion job not found',
+          statusCode: 404,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return reply.send(result);
     }
   );
 }

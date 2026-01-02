@@ -2,15 +2,14 @@
  * Token Manager
  * Manages JWT access and refresh tokens
  * 
- * PHASE 3 IMPLEMENTATION REQUIRED:
- * - Store tokens securely in chrome.storage.local
- * - Check token expiration
- * - Automatic refresh when expired
- * - Clear tokens on logout
+ * Stores tokens securely in chrome.storage.local
+ * Checks token expiration and refreshes when needed
  */
 
 import type { AuthTokens } from '@/types/index.ts';
 import { logger } from '@/utils/logger.ts';
+
+const DEFAULT_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 export class TokenManager {
   private static STORAGE_KEY = 'authTokens';
@@ -71,7 +70,6 @@ export class TokenManager {
 
   /**
    * Refresh access token using refresh token
-   * TODO Phase 3: Implement actual refresh logic
    */
   async refreshTokens(): Promise<AuthTokens> {
     // Prevent multiple simultaneous refresh requests
@@ -95,13 +93,38 @@ export class TokenManager {
   private async doRefresh(): Promise<AuthTokens> {
     logger.info('Refreshing tokens');
 
-    // TODO Phase 3: Call backend /auth/refresh endpoint
-    // - Get current refresh token
-    // - POST to /api/v1/auth/refresh
-    // - Store new tokens
-    // - Return new tokens
+    const existing = await this.getTokens();
+    if (!existing?.refreshToken) {
+      throw new Error('Refresh token missing');
+    }
 
-    throw new Error('Token refresh not implemented (Phase 3)');
+    const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken: existing.refreshToken }),
+    });
+
+    if (!response.ok) {
+      const message = await this.extractErrorMessage(response);
+      throw new Error(message || `Refresh failed: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { accessToken?: string };
+    if (!data.accessToken) {
+      throw new Error('Refresh failed: accessToken missing');
+    }
+
+    const expiresAt = this.getJwtExpiry(data.accessToken) ?? (Date.now() + DEFAULT_TOKEN_TTL_MS);
+    const tokens: AuthTokens = {
+      accessToken: data.accessToken,
+      refreshToken: existing.refreshToken,
+      expiresAt,
+    };
+
+    await this.setTokens(tokens);
+    return tokens;
   }
 
   /**
@@ -135,5 +158,38 @@ export class TokenManager {
     }
 
     return tokens.accessToken;
+  }
+
+  private getJwtExpiry(token: string): number | null {
+    const payload = this.decodeJwtPayload(token);
+    if (!payload || typeof payload.exp !== 'number') {
+      return null;
+    }
+    return payload.exp * 1000;
+  }
+
+  private decodeJwtPayload(token: string): { exp?: number } | null {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    try {
+      const payload = parts[1] ?? '';
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(normalized);
+      const data = JSON.parse(decoded) as { exp?: number };
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  private async extractErrorMessage(response: Response): Promise<string | null> {
+    try {
+      const data = (await response.json()) as { message?: string; error?: string };
+      return data.message ?? data.error ?? null;
+    } catch {
+      return null;
+    }
   }
 }

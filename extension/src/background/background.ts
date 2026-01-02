@@ -28,6 +28,14 @@ interface SuggestionResponse {
   nextAction: 'ask_availability' | 'send_booking_link' | 'answer_question' | 'close';
 }
 
+interface SuggestionJobResult {
+  jobId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  suggestion: SuggestionResponse | null;
+  error: string | null;
+  updatedAt: string;
+}
+
 type BackgroundMessage =
   | { type: 'LOGIN_SUCCESS'; payload: { accessToken: string; deviceFingerprint?: string } }
   | { type: 'REQUEST_SUGGESTION'; payload: unknown }
@@ -154,18 +162,41 @@ async function handleSuggestionRequest(payload: unknown): Promise<SuggestionResp
     conversationGoal,
   };
 
-  const accessToken = await getAccessTokenOrLogin();
-  const initialResponse = await fetchSuggestion(accessToken, requestPayload);
+  let accessToken = await getAccessTokenOrLogin();
+  let jobResult: SuggestionJobResult;
 
-  if (initialResponse.status === 401) {
-    await clearAccessToken();
-    state.isAuthenticated = false;
-    const refreshedToken = await getAccessTokenOrLogin();
-    const retryResponse = await fetchSuggestion(refreshedToken, requestPayload);
-    return await parseSuggestionResponse(retryResponse);
+  try {
+    jobResult = await createSuggestionJob(accessToken, requestPayload);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'AUTH_EXPIRED') {
+      await clearAccessToken();
+      state.isAuthenticated = false;
+      accessToken = await getAccessTokenOrLogin();
+      jobResult = await createSuggestionJob(accessToken, requestPayload);
+    } else {
+      throw error;
+    }
   }
 
-  return await parseSuggestionResponse(initialResponse);
+  if (jobResult.status === 'failed') {
+    throw new Error(jobResult.error || 'Suggestion request failed');
+  }
+
+  if (jobResult.status === 'completed' && jobResult.suggestion) {
+    return jobResult.suggestion;
+  }
+
+  try {
+    return await pollSuggestionResult(accessToken, jobResult.jobId);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'AUTH_EXPIRED') {
+      await clearAccessToken();
+      state.isAuthenticated = false;
+      accessToken = await getAccessTokenOrLogin();
+      return await pollSuggestionResult(accessToken, jobResult.jobId);
+    }
+    throw error;
+  }
 }
 
 async function getAccessTokenOrLogin(): Promise<string> {
@@ -183,15 +214,18 @@ async function getAccessTokenOrLogin(): Promise<string> {
 
 async function extractErrorMessage(response: Response): Promise<string | null> {
   try {
-    const data = (await response.json()) as { message?: string };
-    return data.message ?? null;
+    const data = (await response.json()) as { message?: string; error?: string };
+    return data.message ?? data.error ?? null;
   } catch {
     return null;
   }
 }
 
-async function fetchSuggestion(accessToken: string, payload: Record<string, unknown>): Promise<Response> {
-  return fetch(`${API_BASE_URL}/suggest`, {
+async function createSuggestionJob(
+  accessToken: string,
+  payload: Record<string, unknown>
+): Promise<SuggestionJobResult> {
+  const response = await fetch(`${API_BASE_URL}/suggest`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -199,20 +233,78 @@ async function fetchSuggestion(accessToken: string, payload: Record<string, unkn
     },
     body: JSON.stringify(payload),
   });
-}
 
-async function parseSuggestionResponse(response: Response): Promise<SuggestionResponse> {
+  if (response.status === 401) {
+    throw new Error('AUTH_EXPIRED');
+  }
+
   if (!response.ok) {
     const message = await extractErrorMessage(response);
     throw new Error(message || `API error: ${response.status}`);
   }
 
   const data = (await response.json()) as unknown;
-  if (!isSuggestionResponse(data)) {
-    throw new Error('Invalid suggestion response');
+  if (!isSuggestionJobResult(data)) {
+    throw new Error('Invalid suggestion job response');
   }
 
   return data;
+}
+
+async function fetchSuggestionStatus(
+  accessToken: string,
+  jobId: string
+): Promise<SuggestionJobResult> {
+  const response = await fetch(`${API_BASE_URL}/suggest/${jobId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.status === 401) {
+    throw new Error('AUTH_EXPIRED');
+  }
+
+  if (!response.ok) {
+    const message = await extractErrorMessage(response);
+    throw new Error(message || `API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as unknown;
+  if (!isSuggestionJobResult(data)) {
+    throw new Error('Invalid suggestion status response');
+  }
+
+  return data;
+}
+
+async function pollSuggestionResult(
+  accessToken: string,
+  jobId: string
+): Promise<SuggestionResponse> {
+  const pollIntervalMs = 1000;
+  const timeoutMs = 30_000;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const result = await fetchSuggestionStatus(accessToken, jobId);
+
+    if (result.status === 'completed') {
+      if (result.suggestion) {
+        return result.suggestion;
+      }
+      throw new Error('Suggestion missing from completed job');
+    }
+
+    if (result.status === 'failed') {
+      throw new Error(result.error || 'Suggestion generation failed');
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error('Suggestion timed out');
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -251,6 +343,14 @@ function isSuggestionResponse(value: unknown): value is SuggestionResponse {
     typeof value.intentScore === 'number' &&
     typeof value.reasoning === 'string' &&
     typeof value.nextAction === 'string';
+}
+
+function isSuggestionJobResult(value: unknown): value is SuggestionJobResult {
+  return isRecord(value) &&
+    typeof value.jobId === 'string' &&
+    typeof value.status === 'string' &&
+    (value.suggestion === null || isSuggestionResponse(value.suggestion)) &&
+    (value.error === null || typeof value.error === 'string');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

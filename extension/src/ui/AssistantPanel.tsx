@@ -398,7 +398,7 @@ export function AssistantPanel(): h.JSX.Element {
             class="primary" 
             onClick={handleUseDraft}
           >
-            Insert into Chat
+            Insert Draft
           </button>
         </div>
       </div>

@@ -67,6 +67,3 @@ export const useStore = create<ExtensionStore>((set) => ({
   reset: () => 
     set(initialState),
 }));
-
-// TODO Phase 2: Add selectors for derived state
-// Example: export const selectHasSuggestion = (state: ExtensionStore) => state.activeSuggestion !== null;

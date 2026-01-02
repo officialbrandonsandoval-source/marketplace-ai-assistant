@@ -10,8 +10,9 @@ export function buildPrompt(input: {
   messages: Message[];
   listingTitle?: string;
   listingPrice?: string;
+  customInstructions?: string;
 }) {
-  const { conversationGoal, messages } = input;
+  const { conversationGoal, messages, customInstructions } = input;
 
   let systemInstruction = '';
 
@@ -37,6 +38,10 @@ export function buildPrompt(input: {
       'Do not add extra keys.',
       'No markdown. No extra keys. No preamble.',
     ].join(' ');
+  }
+
+  if (customInstructions && customInstructions.trim().length > 0) {
+    systemInstruction = `${systemInstruction} User instructions: ${customInstructions.trim()}`;
   }
 
   return {

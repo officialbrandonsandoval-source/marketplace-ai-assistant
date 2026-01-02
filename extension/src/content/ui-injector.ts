@@ -67,7 +67,6 @@ export class UIInjector {
 
     } catch (error) {
       logger.error({ error }, 'Failed to inject UI');
-      throw error;
     }
   }
 

@@ -104,8 +104,9 @@ async function initialize(): Promise<void> {
     window.addEventListener('message', handleWindowMessage);
     logger.info('Message listeners registered');
 
-    // Set authentication status (Phase 3 will check actual tokens)
-    useStore.getState().setAuthenticated(true);
+    // Set authentication status based on stored token
+    const tokenResult = await chrome.storage.local.get(['access_token']);
+    useStore.getState().setAuthenticated(typeof tokenResult.access_token === 'string');
 
     isInitialized = true;
     logger.info('Content script initialization complete');

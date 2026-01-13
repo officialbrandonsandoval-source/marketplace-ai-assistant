@@ -7,7 +7,9 @@
     "storage"
   ],
   "host_permissions": [
-    "https://www.facebook.com/*"
+    "https://www.facebook.com/*",
+    "https://marketplace-ai-assistant.onrender.com/*",
+    "http://localhost:3000/*"
   ],
   "background": {
     "service_worker": "src/background/background.js",

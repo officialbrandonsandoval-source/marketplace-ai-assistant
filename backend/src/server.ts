@@ -44,6 +44,12 @@ fastify.addHook('onRequest', async (request) => {
 const corsOrigin: OriginFunction = (origin, callback) => {
   if (!origin) return callback(null, true);
 
+  // Allow browser extension origins (Chrome/Firefox) since the client is a packaged extension,
+  // not a traditional website origin.
+  if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
+    return callback(null, true);
+  }
+
   if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
     callback(null, true);
   } else {

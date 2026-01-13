@@ -284,7 +284,7 @@ async function pollSuggestionResult(
   jobId: string
 ): Promise<SuggestionResponse> {
   const pollIntervalMs = 1000;
-  const timeoutMs = 30_000;
+  const timeoutMs = 60_000;
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {

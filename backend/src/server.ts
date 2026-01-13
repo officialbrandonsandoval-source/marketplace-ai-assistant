@@ -86,6 +86,17 @@ await fastify.register(suggestRoutes);
 await fastify.register(settingsRoutes);
 await fastify.register(adminRoutes);
 
+// In production, start the queue worker in-process by default.
+// This avoids suggestion jobs getting stuck in `pending` when no separate worker service is running.
+if (process.env.NODE_ENV === 'production' && process.env.START_WORKER !== 'false') {
+  try {
+    await import('./worker.js');
+    fastify.log.info('Background worker started in-process');
+  } catch (error) {
+    fastify.log.error({ error }, 'Failed to start background worker');
+  }
+}
+
 // Start server
 try {
   await fastify.listen({ port: PORT, host: HOST });

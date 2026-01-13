@@ -1,15 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
+const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY ?? process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL = 'claude-3-5-haiku-20241022';
-
-if (!CLAUDE_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY missing');
-}
-
-const anthropic = new Anthropic({
-  apiKey: CLAUDE_API_KEY,
-});
 
 export interface ClaudeRequest {
   system: string;
@@ -31,6 +23,13 @@ export interface ClaudeResponse {
 
 export async function callClaude(request: ClaudeRequest): Promise<ClaudeResponse> {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY (or CLAUDE_API_KEY) missing');
+    }
+
+    const anthropic = new Anthropic({ apiKey });
+
     console.info('[Claude] Request', {
       model: CLAUDE_MODEL,
       maxTokens: request.maxTokens || 300,

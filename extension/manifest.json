@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "description": "AI-assisted conversation replies for Facebook Marketplace with human-in-the-loop safety",
   "permissions": [
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "host_permissions": [
     "https://www.facebook.com/*"

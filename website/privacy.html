@@ -1,104 +1,96 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Privacy Policy &ndash; Marketplace AI Assistant</title>
-    <style>
-      body {
-        margin: 0;
-        font-family: "Space Grotesk", "Avenir Next", "Helvetica Neue", sans-serif;
-        color: #0f172a;
-        background: #f8fafc;
-      }
-      .page {
-        max-width: 860px;
-        margin: 0 auto;
-        padding: 48px 24px 80px;
-      }
-      h1 {
-        font-size: 32px;
-        margin-bottom: 16px;
-      }
-      h2 {
-        margin-top: 32px;
-        font-size: 20px;
-      }
-      p,
-      li {
-        color: #475569;
-        line-height: 1.6;
-      }
-      a {
-        color: #0ea5e9;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page">
-      <h1>Privacy Policy &ndash; Marketplace AI Assistant</h1>
-      <p>Last updated: January 02, 2026</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Marketplace AI Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f9fafb;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #111; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; color: #111; }
+    p, ul { margin-bottom: 1rem; }
+    ul { padding-left: 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    .updated { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
+    .contact { background: #fff; padding: 1.5rem; border-radius: 8px; margin-top: 2rem; border: 1px solid #e5e7eb; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: January 13, 2026</p>
 
-      <p>
-        Marketplace AI Assistant is a Chrome extension that drafts reply
-        suggestions for Facebook Marketplace conversations only. This policy
-        explains what we collect and how we use it.
-      </p>
+  <p>Marketplace AI Assistant ("we", "our", or "the Extension") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our Chrome extension.</p>
 
-      <h2>Information We Collect</h2>
-      <ul>
-        <li>Device identifiers used for authentication.</li>
-        <li>Conversation context required to generate drafts.</li>
-        <li>Usage data for rate limiting and plan enforcement.</li>
-      </ul>
+  <h2>Information We Collect</h2>
+  <p>The Extension collects the following information solely to provide AI-assisted reply suggestions:</p>
+  <ul>
+    <li><strong>Message Content:</strong> Text from Facebook Marketplace conversations you are actively viewing, sent to our servers to generate reply suggestions.</li>
+    <li><strong>Listing Information:</strong> Title and price of listings associated with conversations, used to provide context-aware suggestions.</li>
+    <li><strong>Account Data:</strong> Email address used for authentication and account management.</li>
+    <li><strong>Usage Data:</strong> Number of suggestions requested, for rate limiting and service improvement.</li>
+  </ul>
 
-      <h2>How We Use Information</h2>
-      <ul>
-        <li>Provide AI-generated reply suggestions.</li>
-        <li>Enforce rate limits and plan rules.</li>
-        <li>Operate the service securely and reliably.</li>
-      </ul>
+  <h2>Information We Do NOT Collect</h2>
+  <ul>
+    <li>We do not collect passwords or payment information</li>
+    <li>We do not access messages outside of active Marketplace conversations</li>
+    <li>We do not track browsing history or activity outside Facebook Marketplace</li>
+    <li>We do not sell or share personal data with third parties for advertising</li>
+  </ul>
 
-      <h2>Human-in-the-Loop Only</h2>
-      <p>
-        The extension drafts replies only. It does not auto-send messages and
-        does not click the Facebook send button. You must manually send any
-        message.
-      </p>
+  <h2>How We Use Your Information</h2>
+  <ul>
+    <li><strong>Generate Suggestions:</strong> Message content is processed by Claude AI (Anthropic) to generate contextual reply drafts.</li>
+    <li><strong>Improve Service:</strong> Aggregated, anonymized usage patterns help us improve suggestion quality.</li>
+    <li><strong>Account Management:</strong> Email is used for authentication and service communications.</li>
+  </ul>
 
-      <h2>Credentials</h2>
-      <p>
-        We do not store your Facebook credentials. Authentication is handled by
-        Facebook in your browser session.
-      </p>
+  <h2>Data Storage and Security</h2>
+  <ul>
+    <li>All data is transmitted over HTTPS encryption</li>
+    <li>Message content is processed in real-time and not permanently stored after suggestion generation</li>
+    <li>Account credentials are hashed and salted</li>
+    <li>We use industry-standard security practices to protect your data</li>
+  </ul>
 
-      <h2>Message Content</h2>
-      <p>
-        Message content is processed only to generate draft suggestions for the
-        active Facebook Marketplace thread. The service does not use your
-        messages for advertising.
-      </p>
+  <h2>Third-Party Services</h2>
+  <p>We use the following third-party services:</p>
+  <ul>
+    <li><strong>Anthropic (Claude AI):</strong> Processes message content to generate suggestions. Subject to <a href="https://www.anthropic.com/privacy" target="_blank">Anthropic's Privacy Policy</a>.</li>
+    <li><strong>Render:</strong> Hosts our backend infrastructure. Subject to <a href="https://render.com/privacy" target="_blank">Render's Privacy Policy</a>.</li>
+  </ul>
 
-      <h2>Data Sharing</h2>
-      <p>
-        We do not sell personal information. We do not share data with third
-        parties except service providers required to operate the product
-        (hosting and AI inference).
-      </p>
+  <h2>Your Rights</h2>
+  <p>You have the right to:</p>
+  <ul>
+    <li>Request deletion of your account and associated data</li>
+    <li>Opt out of the service at any time by uninstalling the extension</li>
+    <li>Request a copy of data we hold about you</li>
+  </ul>
 
-      <h2>Data Retention</h2>
-      <p>
-        We retain data only as long as necessary to operate the service, enforce
-        usage limits, and comply with legal obligations.
-      </p>
+  <h2>Data Retention</h2>
+  <p>We retain account data for as long as your account is active. Suggestion history is retained for 30 days for service improvement, then automatically deleted. You may request immediate deletion at any time.</p>
 
-      <h2>Your Choices</h2>
-      <p>
-        You can request data deletion or ask questions by contacting
-        <a href="mailto:Brandon@pons.solutions">
-          Brandon@pons.solutions
-        </a>.
-      </p>
-    </div>
-  </body>
+  <h2>Children's Privacy</h2>
+  <p>This service is not intended for users under 18 years of age. We do not knowingly collect information from children.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>We may update this Privacy Policy periodically. We will notify users of material changes via the extension or email.</p>
+
+  <div class="contact">
+    <h2>Contact Us</h2>
+    <p>If you have questions about this Privacy Policy or your data, contact us at:</p>
+    <p><strong>Email:</strong> privacy@shiftly.app</p>
+  </div>
+</body>
 </html>

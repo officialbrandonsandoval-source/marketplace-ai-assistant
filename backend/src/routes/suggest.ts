@@ -7,6 +7,10 @@ import { db } from '../db/client.js';
 import { threads, actions } from '../db/schema.js';
 import { getAccountPlan } from '../services/plan.js';
 import { claudeQueue } from '../queue/claude-queue.js';
+import { callClaude } from '../clients/claude-client.js';
+import { parseClaudeResponse } from '../services/response-parser.js';
+import { buildPrompt } from '../services/prompt-builder.js';
+import { assertCircuitClosed, recordFailure, recordSuccess } from '../services/circuit-breaker.js';
 import {
   setSuggestionResult,
   getSuggestionResult,
@@ -99,6 +103,92 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           ip_address: request.ip,
           user_agent: request.headers['user-agent'] ?? null,
         });
+
+        // By default, generate inline to avoid timeouts in deployments that don't run a separate BullMQ worker.
+        // Opt into queued mode by setting USE_QUEUE=true.
+        const useQueue = process.env.USE_QUEUE === 'true';
+
+        if (!useQueue) {
+          const jobId = request.id;
+
+          await setSuggestionResult(accountId, jobId, {
+            jobId,
+            status: 'processing',
+            suggestion: null,
+            error: null,
+            updatedAt: new Date().toISOString(),
+          });
+
+          try {
+            await assertCircuitClosed();
+
+            const prompt = buildPrompt({
+              conversationGoal,
+              messages: context.messages,
+              listingTitle: context.listingTitle ?? undefined,
+              listingPrice: context.listingPrice ?? undefined,
+              customInstructions: body.customInstructions,
+            });
+
+            const transcript = context.messages
+              .map((message) => `${message.isUser ? 'User' : 'Other'}: ${message.text}`)
+              .join('\n') || 'No messages yet.';
+
+            const claudeResponse = await callClaude({
+              system: prompt.systemInstruction,
+              userMessage: transcript,
+              maxTokens: 300,
+              temperature: 0,
+            });
+
+            const suggestion = parseClaudeResponse(claudeResponse.content, conversationGoal);
+            await recordSuccess();
+
+            const completed: SuggestionJobResult = {
+              jobId,
+              status: 'completed',
+              suggestion,
+              error: null,
+              updatedAt: new Date().toISOString(),
+            };
+            await setSuggestionResult(accountId, jobId, completed);
+
+            await db.insert(actions).values({
+              account_id: accountId,
+              user_id: userId,
+              action_type: 'suggestion_generated',
+              metadata: {
+                thread_id: context.threadId,
+                message_count: context.messages.length,
+                intent_score: suggestion.intentScore,
+                next_action: suggestion.nextAction,
+                tokens_used: claudeResponse.usage.totalTokens,
+                input_tokens: claudeResponse.usage.inputTokens,
+                output_tokens: claudeResponse.usage.outputTokens,
+                duration_ms: Date.now() - startTime,
+              },
+              ip_address: request.ip,
+              user_agent: request.headers['user-agent'] ?? null,
+            });
+
+            return reply.send(completed);
+          } catch (inlineError) {
+            const message = inlineError instanceof Error ? inlineError.message : 'Suggestion generation failed';
+            await recordFailure();
+
+            const failed: SuggestionJobResult = {
+              jobId,
+              status: 'failed',
+              suggestion: null,
+              error: message === 'CLAUDE_CIRCUIT_OPEN'
+                ? 'Claude temporarily unavailable. Please retry shortly.'
+                : message,
+              updatedAt: new Date().toISOString(),
+            };
+            await setSuggestionResult(accountId, jobId, failed);
+            throw inlineError;
+          }
+        }
 
         const job = await claudeQueue.add('generate', {
           accountId,

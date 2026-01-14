@@ -36,6 +36,7 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, 'src/content/content.ts'),
         background: resolve(__dirname, 'src/background/background.ts'),
+        popup: resolve(__dirname, 'src/popup/popup.ts'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -44,6 +45,9 @@ export default defineConfig({
           }
           if (chunkInfo.name === 'content') {
             return 'src/content/[name].js';
+          }
+          if (chunkInfo.name === 'popup') {
+            return 'src/popup/[name].js';
           }
           return 'assets/[name]-[hash].js';
         },

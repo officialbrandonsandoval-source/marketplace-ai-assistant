@@ -33,6 +33,7 @@ interface SuggestionRequest {
   listingPrice: string | null;
   listingUrl: string | null;
   conversationGoal: string;
+  quickQuestion?: string;
   customInstructions?: string;
   savedPresetId?: string;
   messages: Array<{
@@ -51,6 +52,7 @@ type SuggestionResult = SuggestionResponse | SuggestionErrorResponse;
 
 interface SuggestionControls {
   conversationGoal?: string;
+  quickQuestion?: string;
   customInstructions?: string;
   savedPresetId?: string;
 }
@@ -80,9 +82,9 @@ async function initialize(): Promise<void> {
     // Wait for page to be ready
     await waitForPageReady();
 
-    // Verify we're on a valid Marketplace page
-    if (!isMarketplaceMessagesPage()) {
-      logger.info('Not on Marketplace messages page, content script idle');
+    // Content script is matched to facebook.com via manifest; avoid doing work on unexpected hosts.
+    if (!isFacebookHost()) {
+      logger.info('Not on facebook.com host, content script idle');
       return;
     }
 
@@ -265,6 +267,7 @@ function buildSuggestionPayload(
     ? `https://www.facebook.com/marketplace/item/${listingId}`
     : null;
   const conversationGoal = controls?.conversationGoal?.trim() || 'general_assistance';
+  const quickQuestion = controls?.quickQuestion?.trim() || undefined;
   const customInstructions = controls?.customInstructions?.trim() || undefined;
   const savedPresetId = controls?.savedPresetId?.trim() || undefined;
 
@@ -275,6 +278,7 @@ function buildSuggestionPayload(
     listingPrice: listing ? String(listing.price) : null,
     listingUrl,
     conversationGoal,
+    quickQuestion,
     customInstructions,
     savedPresetId,
     messages: threadContext.messages.map((message) => ({
@@ -295,6 +299,10 @@ function extractSuggestionControls(payload: unknown): SuggestionControls | undef
 
   if (typeof payload.conversationGoal === 'string') {
     controls.conversationGoal = payload.conversationGoal;
+  }
+
+  if (typeof payload.quickQuestion === 'string') {
+    controls.quickQuestion = payload.quickQuestion;
   }
 
   if (typeof payload.customInstructions === 'string') {
@@ -373,12 +381,8 @@ async function waitForPageReady(): Promise<void> {
 /**
  * Check if current URL is Facebook Marketplace messages page
  */
-function isMarketplaceMessagesPage(): boolean {
-  const url = window.location.href;
-  const isMarketplaceInbox = url.includes('facebook.com/marketplace') &&
-    (url.includes('/inbox') || url.includes('/you/selling'));
-  const isMessengerThread = url.includes('facebook.com/messages/t/');
-  return isMarketplaceInbox || isMessengerThread;
+function isFacebookHost(): boolean {
+  return window.location.hostname === 'www.facebook.com' || window.location.hostname.endsWith('.facebook.com');
 }
 
 /**

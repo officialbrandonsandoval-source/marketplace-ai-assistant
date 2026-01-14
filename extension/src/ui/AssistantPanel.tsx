@@ -49,8 +49,14 @@ function isSuggestionErrorPayload(value: unknown): value is SuggestionErrorPaylo
 
 function getGoalLabel(goal: string): string {
   switch (goal) {
+    case 'buy_item':
+      return 'Buy Item';
     case 'sell_item':
       return 'Sell Item';
+    case 'negotiate_price':
+      return 'Negotiate Price';
+    case 'arrange_pickup':
+      return 'Arrange Pickup';
     case 'book_appointment':
       return 'Book Appointment';
     case 'close_deal':
@@ -59,6 +65,23 @@ function getGoalLabel(goal: string): string {
       return 'General Help';
     default:
       return goal;
+  }
+}
+
+function getQuickQuestionLabel(value: string): string {
+  switch (value) {
+    case 'availability':
+      return 'Is this still available?';
+    case 'condition':
+      return 'What’s the condition / any issues?';
+    case 'pickup_location':
+      return 'Where can we meet / what area are you in?';
+    case 'pickup_time':
+      return 'When can we pick up / meet?';
+    case 'price_flex':
+      return 'Are you firm on price?';
+    default:
+      return value;
   }
 }
 
@@ -76,6 +99,8 @@ export function AssistantPanel(): h.JSX.Element {
   const rateLimitStatus = useStore(state => state.rateLimitStatus);
   const conversationGoal = useStore(state => state.conversationGoal);
   const setConversationGoal = useStore(state => state.setConversationGoal);
+  const quickQuestion = useStore(state => state.quickQuestion);
+  const setQuickQuestion = useStore(state => state.setQuickQuestion);
   const setActiveSuggestion = useStore(state => state.setActiveSuggestion);
   const clearError = useStore(state => state.clearError);
 
@@ -129,22 +154,31 @@ export function AssistantPanel(): h.JSX.Element {
   useEffect(() => {
     let isMounted = true;
 
-    void chrome.storage.local.get(['conversation_goal']).then((result) => {
+    void chrome.storage.local.get(['conversation_goal', 'quick_question']).then((result) => {
       if (!isMounted) return;
       const storedGoal = result.conversation_goal;
       if (typeof storedGoal === 'string' && storedGoal.length > 0) {
         setConversationGoal(storedGoal);
+      }
+
+      const storedQuickQuestion = result.quick_question;
+      if (typeof storedQuickQuestion === 'string') {
+        setQuickQuestion(storedQuickQuestion);
       }
     }).catch(() => undefined);
 
     return () => {
       isMounted = false;
     };
-  }, [setConversationGoal]);
+  }, [setConversationGoal, setQuickQuestion]);
 
   useEffect(() => {
     void chrome.storage.local.set({ conversation_goal: conversationGoal }).catch(() => undefined);
   }, [conversationGoal]);
+
+  useEffect(() => {
+    void chrome.storage.local.set({ quick_question: quickQuestion }).catch(() => undefined);
+  }, [quickQuestion]);
 
   /**
    * Request AI suggestion from background script
@@ -164,6 +198,9 @@ export function AssistantPanel(): h.JSX.Element {
       type: 'REQUEST_SUGGESTION_FROM_UI',
       payload: {
         conversationGoal,
+        quickQuestion: quickQuestion.trim().length > 0
+          ? getQuickQuestionLabel(quickQuestion.trim())
+          : undefined,
         customInstructions: customInstructions.trim() || undefined,
         savedPresetId: savedPresetId.trim() || undefined,
       },
@@ -261,10 +298,27 @@ export function AssistantPanel(): h.JSX.Element {
             onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
             style={{ width: '100%', marginTop: '4px' }}
           >
-            <option value="general_assistance">General Help</option>
+            <option value="buy_item">Buy Item</option>
             <option value="sell_item">Sell Item</option>
-            <option value="book_appointment">Book Appointment</option>
-            <option value="close_deal">Close the Deal</option>
+            <option value="negotiate_price">Negotiate Price</option>
+            <option value="arrange_pickup">Arrange Pickup</option>
+            <option value="general_assistance">General Help</option>
+          </select>
+        </label>
+
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Simple question (optional)
+          <select
+            value={quickQuestion}
+            onChange={(event) => setQuickQuestion((event.target as HTMLSelectElement).value)}
+            style={{ width: '100%', marginTop: '4px' }}
+          >
+            <option value="">None</option>
+            <option value="availability">{getQuickQuestionLabel('availability')}</option>
+            <option value="condition">{getQuickQuestionLabel('condition')}</option>
+            <option value="pickup_location">{getQuickQuestionLabel('pickup_location')}</option>
+            <option value="pickup_time">{getQuickQuestionLabel('pickup_time')}</option>
+            <option value="price_flex">{getQuickQuestionLabel('price_flex')}</option>
           </select>
         </label>
         <label style={{ fontSize: '12px', color: '#374151' }}>
@@ -354,10 +408,27 @@ export function AssistantPanel(): h.JSX.Element {
                 onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
                 style={{ width: '100%', marginTop: '4px' }}
               >
-                <option value="general_assistance">General Help</option>
+                <option value="buy_item">Buy Item</option>
                 <option value="sell_item">Sell Item</option>
-                <option value="book_appointment">Book Appointment</option>
-                <option value="close_deal">Close the Deal</option>
+                <option value="negotiate_price">Negotiate Price</option>
+                <option value="arrange_pickup">Arrange Pickup</option>
+                <option value="general_assistance">General Help</option>
+              </select>
+            </label>
+
+            <label style={{ fontSize: '12px', color: '#374151' }}>
+              Simple question (optional)
+              <select
+                value={quickQuestion}
+                onChange={(event) => setQuickQuestion((event.target as HTMLSelectElement).value)}
+                style={{ width: '100%', marginTop: '4px' }}
+              >
+                <option value="">None</option>
+                <option value="availability">{getQuickQuestionLabel('availability')}</option>
+                <option value="condition">{getQuickQuestionLabel('condition')}</option>
+                <option value="pickup_location">{getQuickQuestionLabel('pickup_location')}</option>
+                <option value="pickup_time">{getQuickQuestionLabel('pickup_time')}</option>
+                <option value="price_flex">{getQuickQuestionLabel('price_flex')}</option>
               </select>
             </label>
             <label style={{ fontSize: '12px', color: '#374151' }}>
@@ -426,10 +497,27 @@ export function AssistantPanel(): h.JSX.Element {
             onChange={(event) => setConversationGoal((event.target as HTMLSelectElement).value)}
             style={{ width: '100%', marginTop: '4px' }}
           >
-            <option value="general_assistance">General Help</option>
+            <option value="buy_item">Buy Item</option>
             <option value="sell_item">Sell Item</option>
-            <option value="book_appointment">Book Appointment</option>
-            <option value="close_deal">Close the Deal</option>
+            <option value="negotiate_price">Negotiate Price</option>
+            <option value="arrange_pickup">Arrange Pickup</option>
+            <option value="general_assistance">General Help</option>
+          </select>
+        </label>
+
+        <label style={{ fontSize: '12px', color: '#374151' }}>
+          Simple question (optional)
+          <select
+            value={quickQuestion}
+            onChange={(event) => setQuickQuestion((event.target as HTMLSelectElement).value)}
+            style={{ width: '100%', marginTop: '4px' }}
+          >
+            <option value="">None</option>
+            <option value="availability">{getQuickQuestionLabel('availability')}</option>
+            <option value="condition">{getQuickQuestionLabel('condition')}</option>
+            <option value="pickup_location">{getQuickQuestionLabel('pickup_location')}</option>
+            <option value="pickup_time">{getQuickQuestionLabel('pickup_time')}</option>
+            <option value="price_flex">{getQuickQuestionLabel('price_flex')}</option>
           </select>
         </label>
         <label style={{ fontSize: '12px', color: '#374151' }}>

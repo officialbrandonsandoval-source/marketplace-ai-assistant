@@ -53,6 +53,8 @@ const worker = new Worker<ClaudeJobPayload>(
         messages: job.data.messages,
         listingTitle: job.data.listingTitle ?? undefined,
         listingPrice: job.data.listingPrice ?? undefined,
+        quickQuestion: job.data.quickQuestion ?? undefined,
+        persistentContext: job.data.persistentContext ?? undefined,
         customInstructions: job.data.customInstructions ?? undefined,
       });
 

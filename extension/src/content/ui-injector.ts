@@ -15,11 +15,13 @@ import { AssistantPanel } from '@/ui/AssistantPanel.tsx';
 
 const CONTAINER_ID = 'claude-assistant-root';
 const PULSE_ANIMATION_ID = 'claude-pulse-animation';
+const POSITION_STORAGE_KEY = 'assistant_panel_position_v1';
 
 export class UIInjector {
   private shadowRoot: ShadowRoot | null = null;
   private containerElement: HTMLElement | null = null;
   private isInjected = false;
+  private cleanupDragListeners: (() => void) | null = null;
 
   /**
    * Inject UI panel into Facebook page
@@ -34,7 +36,7 @@ export class UIInjector {
     try {
       logger.info('Injecting AI Assistant UI panel');
 
-      // Find anchor point in Facebook's DOM
+      // Inject into document.body so the panel can be available on any Facebook page.
       const anchor = this.findAnchor();
       if (!anchor) {
         logger.error('Could not find suitable anchor point for UI injection');
@@ -45,9 +47,12 @@ export class UIInjector {
       this.containerElement = document.createElement('div');
       this.containerElement.id = CONTAINER_ID;
       this.containerElement.style.cssText = `
-        position: relative;
-        z-index: 9999;
-        margin-bottom: 16px;
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        z-index: 2147483647;
       `;
 
       // Attach Shadow DOM for CSS isolation
@@ -59,8 +64,12 @@ export class UIInjector {
       // Mount Preact component into Shadow DOM using createElement API
       render(h(AssistantPanel, null), this.shadowRoot);
 
+      // Enable dragging and restore last position
+      this.enableDragging();
+      void this.restorePosition();
+
       // Insert into Facebook's DOM
-      anchor.insertBefore(this.containerElement, anchor.firstChild);
+      anchor.appendChild(this.containerElement);
 
       this.isInjected = true;
       logger.info({ anchorType: anchor.tagName }, 'UI injection complete');
@@ -84,6 +93,11 @@ export class UIInjector {
       // Unmount Preact component
       if (this.shadowRoot) {
         render(null, this.shadowRoot);
+      }
+
+      if (this.cleanupDragListeners) {
+        this.cleanupDragListeners();
+        this.cleanupDragListeners = null;
       }
 
       // Remove container from DOM
@@ -128,6 +142,10 @@ export class UIInjector {
    */
   private findAnchor(): HTMLElement | null {
     try {
+      if (document.body) {
+        return document.body;
+      }
+
       // Strategy 1: Find message composer area (most reliable)
       const composerAnchor = this.findComposerAnchor();
       if (composerAnchor) {
@@ -226,6 +244,8 @@ export class UIInjector {
         font-size: 14px;
         line-height: 1.5;
         color: #050505;
+        max-height: 70vh;
+        overflow: auto;
       }
 
       * {
@@ -252,6 +272,12 @@ export class UIInjector {
         border-radius: 10px;
         background: linear-gradient(120deg, #e0f2fe 0%, #fff7ed 100%);
         border: 1px solid #dbeafe;
+        cursor: grab;
+        user-select: none;
+      }
+
+      :host([data-dragging="true"]) .panel-header {
+        cursor: grabbing;
       }
 
       .panel-header h3 {
@@ -439,5 +465,171 @@ export class UIInjector {
     `;
 
     this.shadowRoot.appendChild(styleElement);
+  }
+
+  private enableDragging(): void {
+    if (!this.containerElement || !this.shadowRoot) {
+      return;
+    }
+
+    const container = this.containerElement;
+    const root = this.shadowRoot;
+
+    let isDragging = false;
+    let startClientX = 0;
+    let startClientY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    let windowMoveListener: ((event: PointerEvent) => void) | null = null;
+    let windowUpListener: ((event: PointerEvent) => void) | null = null;
+
+    const clamp = (value: number, min: number, max: number): number => {
+      return Math.min(max, Math.max(min, value));
+    };
+
+    const isHeaderDragStart = (event: PointerEvent): boolean => {
+      const path = event.composedPath();
+      return path.some((node) => {
+        return node instanceof HTMLElement && node.classList.contains('panel-header');
+      });
+    };
+
+    const onPointerMove = (event: PointerEvent): void => {
+      if (!isDragging) return;
+
+      const dx = event.clientX - startClientX;
+      const dy = event.clientY - startClientY;
+
+      const rect = container.getBoundingClientRect();
+      const maxLeft = window.innerWidth - rect.width;
+      const maxTop = window.innerHeight - rect.height;
+
+      const nextLeft = clamp(startLeft + dx, 0, Math.max(0, maxLeft));
+      const nextTop = clamp(startTop + dy, 0, Math.max(0, maxTop));
+
+      container.style.left = `${nextLeft}px`;
+      container.style.top = `${nextTop}px`;
+    };
+
+    const onPointerUp = async (): Promise<void> => {
+      if (!isDragging) return;
+      isDragging = false;
+      document.documentElement.style.userSelect = '';
+      container.removeAttribute('data-dragging');
+
+      if (windowMoveListener) {
+        window.removeEventListener('pointermove', windowMoveListener);
+        windowMoveListener = null;
+      }
+      if (windowUpListener) {
+        window.removeEventListener('pointerup', windowUpListener);
+        window.removeEventListener('pointercancel', windowUpListener);
+        windowUpListener = null;
+      }
+
+      try {
+        const left = parseFloat(container.style.left);
+        const top = parseFloat(container.style.top);
+        if (!Number.isNaN(left) && !Number.isNaN(top)) {
+          await chrome.storage.local.set({
+            [POSITION_STORAGE_KEY]: { left, top },
+          });
+        }
+      } catch (error) {
+        logger.debug({ error }, 'Failed to persist panel position');
+      }
+    };
+
+    const onPointerDown = (event: Event): void => {
+      const pointerEvent = event as PointerEvent;
+
+      // Only allow left-click / primary pointer to start dragging.
+      if (typeof pointerEvent.button === 'number' && pointerEvent.button !== 0) {
+        return;
+      }
+
+      if (!isHeaderDragStart(pointerEvent)) {
+        return;
+      }
+
+      pointerEvent.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+
+      // Switch from right/bottom anchoring to explicit left/top once the user drags.
+      container.style.right = '';
+      container.style.bottom = '';
+      container.style.left = `${rect.left}px`;
+      container.style.top = `${rect.top}px`;
+
+      isDragging = true;
+      startClientX = pointerEvent.clientX;
+      startClientY = pointerEvent.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      document.documentElement.style.userSelect = 'none';
+      container.setAttribute('data-dragging', 'true');
+      container.setPointerCapture(pointerEvent.pointerId);
+
+      // Track move/up at window level so releasing anywhere drops the panel.
+      windowMoveListener = (moveEvent: PointerEvent) => onPointerMove(moveEvent);
+      windowUpListener = (_upEvent: PointerEvent) => {
+        void onPointerUp();
+      };
+      window.addEventListener('pointermove', windowMoveListener);
+      window.addEventListener('pointerup', windowUpListener);
+      window.addEventListener('pointercancel', windowUpListener);
+    };
+
+    root.addEventListener('pointerdown', onPointerDown);
+
+    this.cleanupDragListeners = () => {
+      root.removeEventListener('pointerdown', onPointerDown);
+      if (windowMoveListener) {
+        window.removeEventListener('pointermove', windowMoveListener);
+        windowMoveListener = null;
+      }
+      if (windowUpListener) {
+        window.removeEventListener('pointerup', windowUpListener);
+        window.removeEventListener('pointercancel', windowUpListener);
+        windowUpListener = null;
+      }
+    };
+  }
+
+  private async restorePosition(): Promise<void> {
+    if (!this.containerElement) {
+      return;
+    }
+
+    try {
+      const stored = await chrome.storage.local.get([POSITION_STORAGE_KEY]);
+      const value = stored[POSITION_STORAGE_KEY] as unknown;
+      if (!value || typeof value !== 'object') {
+        return;
+      }
+
+      const position = value as { left?: unknown; top?: unknown };
+      if (typeof position.left !== 'number' || typeof position.top !== 'number') {
+        return;
+      }
+
+      // Apply and clamp into viewport.
+      const rect = this.containerElement.getBoundingClientRect();
+      const maxLeft = Math.max(0, window.innerWidth - rect.width);
+      const maxTop = Math.max(0, window.innerHeight - rect.height);
+
+      const left = Math.min(maxLeft, Math.max(0, position.left));
+      const top = Math.min(maxTop, Math.max(0, position.top));
+
+      this.containerElement.style.right = '';
+      this.containerElement.style.bottom = '';
+      this.containerElement.style.left = `${left}px`;
+      this.containerElement.style.top = `${top}px`;
+    } catch (error) {
+      logger.debug({ error }, 'Failed to restore panel position');
+    }
   }
 }

@@ -20,22 +20,84 @@
       color: #65676b;
       margin: 0;
     }
-    .status {
-      margin-top: 12px;
-      padding: 8px;
-      background: #e7f3ff;
-      border-radius: 4px;
+    label {
+      display: block;
+      margin-top: 10px;
       font-size: 12px;
+      color: #374151;
+    }
+    input, textarea {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 58px;
+    }
+    .row {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    button {
+      flex: 1;
+      padding: 10px;
+      border: 0;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #374151;
     }
   </style>
 </head>
 <body>
-  <h1>🤖 Marketplace AI Assistant</h1>
-  <p>Navigate to Facebook Marketplace inbox to start.</p>
-  <div class="status">
-    <strong>Phase 1:</strong> Extension scaffold complete
-  </div>
-  
-  <!-- TODO Phase 3: Add login/status UI -->
+  <h1>Marketplace AI Assistant</h1>
+  <p>Set your profile for better replies.</p>
+
+  <form id="profileForm">
+    <label>
+      What you do
+      <input id="whatIDo" type="text" placeholder="e.g., Run a local appliance resale business" />
+    </label>
+
+    <label>
+      Profession
+      <input id="profession" type="text" placeholder="e.g., Realtor / Contractor / Reseller" />
+    </label>
+
+    <label>
+      How you operate
+      <textarea id="howIOperate" placeholder="e.g., First-come-first-served, cash/Venmo, pickup only, evenings best"></textarea>
+    </label>
+
+    <div class="row">
+      <button type="button" class="secondary" id="clearBtn">Clear</button>
+      <button type="submit" id="saveBtn">Save</button>
+    </div>
+  </form>
+
+  <div class="status" id="status" aria-live="polite"></div>
+
+  <script type="module" src="src/popup/popup.js"></script>
 </body>
 </html>

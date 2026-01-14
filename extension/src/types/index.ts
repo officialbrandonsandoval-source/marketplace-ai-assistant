@@ -166,6 +166,7 @@ export interface ExtensionState {
   activeSuggestion: Suggestion | null;
   rateLimitStatus: RateLimitStatus | null;
   conversationGoal: string;
+  quickQuestion: string;
   uiVisible: boolean;
   error: ExtensionError | null;
 }

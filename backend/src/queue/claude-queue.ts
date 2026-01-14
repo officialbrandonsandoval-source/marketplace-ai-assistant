@@ -13,6 +13,8 @@ export interface ClaudeJobPayload {
   listingPrice: string | null;
   listingUrl: string | null;
   conversationGoal: string;
+  quickQuestion?: string;
+  persistentContext?: string;
   customInstructions?: string;
   savedPresetId?: string;
   messages: Array<{

@@ -21,6 +21,7 @@ interface ExtensionStore extends ExtensionState {
   setActiveSuggestion: (suggestion: Suggestion | null) => void;
   setRateLimitStatus: (status: RateLimitStatus | null) => void;
   setConversationGoal: (goal: string) => void;
+  setQuickQuestion: (question: string) => void;
   setUIVisible: (visible: boolean) => void;
   setError: (error: ExtensionError | null) => void;
   clearError: () => void;
@@ -33,6 +34,7 @@ const initialState: ExtensionState = {
   activeSuggestion: null,
   rateLimitStatus: null,
   conversationGoal: 'general_assistance',
+  quickQuestion: '',
   uiVisible: false,
   error: null,
 };
@@ -54,6 +56,9 @@ export const useStore = create<ExtensionStore>((set) => ({
 
   setConversationGoal: (conversationGoal) =>
     set({ conversationGoal }),
+
+  setQuickQuestion: (quickQuestion) =>
+    set({ quickQuestion }),
 
   setUIVisible: (uiVisible) => 
     set({ uiVisible }),

@@ -127,6 +127,8 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
               messages: context.messages,
               listingTitle: context.listingTitle ?? undefined,
               listingPrice: context.listingPrice ?? undefined,
+              quickQuestion: (context as { quickQuestion?: string }).quickQuestion,
+              persistentContext: context.persistentContext,
               customInstructions: body.customInstructions,
             });
 
@@ -199,6 +201,8 @@ export async function suggestRoutes(fastify: FastifyInstance): Promise<void> {
           listingPrice: context.listingPrice,
           listingUrl: context.listingUrl,
           conversationGoal,
+          quickQuestion: (context as { quickQuestion?: string }).quickQuestion,
+          persistentContext: context.persistentContext,
           customInstructions: body.customInstructions,
           savedPresetId: body.savedPresetId,
           messages: context.messages,

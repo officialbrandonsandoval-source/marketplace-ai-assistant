@@ -20,6 +20,7 @@ const state: ServiceWorkerState = {
 
 const API_BASE_URL = 'https://marketplace-ai-assistant.onrender.com';
 const UPGRADE_URL = 'mailto:support@marketplace-ai-assistant.com?subject=Upgrade%20Request';
+const PROFILE_KEY = 'user_profile_v1';
 
 interface SuggestionResponse {
   suggestedMessage: string;
@@ -157,9 +158,12 @@ async function handleSuggestionRequest(payload: unknown): Promise<SuggestionResp
   const conversationGoal = typeof payload.conversationGoal === 'string'
     ? payload.conversationGoal
     : 'general_assistance';
+
+  const persistentContext = await buildPersistentContextFromProfile();
   const requestPayload = {
     ...payload,
     conversationGoal,
+    ...(persistentContext ? { persistentContext } : {}),
   };
 
   let accessToken = await getAccessTokenOrLogin();
@@ -196,6 +200,30 @@ async function handleSuggestionRequest(payload: unknown): Promise<SuggestionResp
       return await pollSuggestionResult(accessToken, jobResult.jobId);
     }
     throw error;
+  }
+}
+
+async function buildPersistentContextFromProfile(): Promise<string | null> {
+  try {
+    const stored = await chrome.storage.local.get([PROFILE_KEY]);
+    const value = stored[PROFILE_KEY] as unknown;
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const profile = value as { whatIDo?: unknown; profession?: unknown; howIOperate?: unknown };
+    const whatIDo = typeof profile.whatIDo === 'string' ? profile.whatIDo.trim() : '';
+    const profession = typeof profile.profession === 'string' ? profile.profession.trim() : '';
+    const howIOperate = typeof profile.howIOperate === 'string' ? profile.howIOperate.trim() : '';
+
+    const lines: string[] = [];
+    if (whatIDo) lines.push(`What I do: ${whatIDo}`);
+    if (profession) lines.push(`Profession: ${profession}`);
+    if (howIOperate) lines.push(`How I operate: ${howIOperate}`);
+
+    return lines.length > 0 ? lines.join('\n') : null;
+  } catch {
+    return null;
   }
 }
 

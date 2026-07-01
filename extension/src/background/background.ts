@@ -8,6 +8,7 @@
  */
 
 import { logger } from '@/utils/logger.ts';
+import { SuggestionCache, stableSuggestionCacheKey } from './suggestion-cache.ts';
 
 // Service worker state (reset on worker restart)
 interface ServiceWorkerState {
@@ -18,9 +19,10 @@ const state: ServiceWorkerState = {
   isAuthenticated: false,
 };
 
-const API_BASE_URL = 'https://marketplace-ai-assistant.onrender.com';
-const UPGRADE_URL = 'mailto:support@marketplace-ai-assistant.com?subject=Upgrade%20Request';
+const API_BASE_URL = 'https://api.pons.solutions';
+const UPGRADE_URL = 'https://pons.solutions/#pricing';
 const PROFILE_KEY = 'user_profile_v1';
+const suggestionCache = new SuggestionCache<SuggestionResponse>({ ttlMs: 20_000, maxEntries: 100 });
 
 interface SuggestionResponse {
   suggestedMessage: string;
@@ -40,6 +42,7 @@ interface SuggestionJobResult {
 type BackgroundMessage =
   | { type: 'LOGIN_SUCCESS'; payload: { accessToken: string; deviceFingerprint?: string } }
   | { type: 'REQUEST_SUGGESTION'; payload: unknown }
+  | { type: 'CLEAR_SUGGESTION_CACHE' }
   | { type: 'OPEN_UPGRADE_URL' };
 
 type BackgroundResponse =
@@ -53,6 +56,7 @@ type BackgroundResponse =
  */
 chrome.runtime.onInstalled.addListener((details) => {
   logger.info({ reason: details.reason }, 'Extension installed/updated');
+  suggestionCache.clear();
   void initializeAuthentication();
 });
 
@@ -86,6 +90,12 @@ chrome.runtime.onMessage.addListener(
         handleSuggestionRequest(message.payload)
           .then((response) => sendResponse(response))
           .catch((error: Error) => sendResponse({ error: error.message }));
+        return true;
+      }
+
+      if (isClearSuggestionCacheMessage(message)) {
+        suggestionCache.clear();
+        sendResponse({ success: true });
         return true;
       }
 
@@ -165,18 +175,23 @@ async function handleSuggestionRequest(payload: unknown): Promise<SuggestionResp
     conversationGoal,
     ...(persistentContext ? { persistentContext } : {}),
   };
+  const cacheKey = stableSuggestionCacheKey(requestPayload);
 
+  return suggestionCache.getOrCreate(cacheKey, () => requestSuggestionFromApi(requestPayload));
+}
+
+async function requestSuggestionFromApi(payload: Record<string, unknown>): Promise<SuggestionResponse> {
   let accessToken = await getAccessTokenOrLogin();
   let jobResult: SuggestionJobResult;
 
   try {
-    jobResult = await createSuggestionJob(accessToken, requestPayload);
+    jobResult = await createSuggestionJob(accessToken, payload);
   } catch (error) {
     if (error instanceof Error && error.message === 'AUTH_EXPIRED') {
       await clearAccessToken();
       state.isAuthenticated = false;
       accessToken = await getAccessTokenOrLogin();
-      jobResult = await createSuggestionJob(accessToken, requestPayload);
+      jobResult = await createSuggestionJob(accessToken, payload);
     } else {
       throw error;
     }
@@ -311,9 +326,10 @@ async function pollSuggestionResult(
   accessToken: string,
   jobId: string
 ): Promise<SuggestionResponse> {
-  const pollIntervalMs = 1000;
-  const timeoutMs = 60_000;
+  const pollDelaysMs = [150, 300, 600, 1000];
+  const timeoutMs = 20_000;
   const deadline = Date.now() + timeoutMs;
+  let pollCount = 0;
 
   while (Date.now() < deadline) {
     const result = await fetchSuggestionStatus(accessToken, jobId);
@@ -329,7 +345,9 @@ async function pollSuggestionResult(
       throw new Error(result.error || 'Suggestion generation failed');
     }
 
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    const delayMs = pollDelaysMs[Math.min(pollCount, pollDelaysMs.length - 1)];
+    pollCount += 1;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
   throw new Error('Suggestion timed out');
@@ -396,6 +414,10 @@ function isRequestSuggestionMessage(message: unknown): message is Extract<Backgr
   return isRecord(message) &&
     message.type === 'REQUEST_SUGGESTION' &&
     'payload' in message;
+}
+
+function isClearSuggestionCacheMessage(message: unknown): message is Extract<BackgroundMessage, { type: 'CLEAR_SUGGESTION_CACHE' }> {
+  return isRecord(message) && message.type === 'CLEAR_SUGGESTION_CACHE';
 }
 
 function isOpenUpgradeMessage(message: unknown): message is Extract<BackgroundMessage, { type: 'OPEN_UPGRADE_URL' }> {

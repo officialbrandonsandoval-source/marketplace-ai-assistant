@@ -1,15 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Facebook Marketplace AI Assistant",
-  "version": "0.1.0",
-  "description": "AI-assisted conversation replies for Facebook Marketplace with human-in-the-loop safety",
+  "name": "PONS Deal Intelligence",
+  "version": "1.0.0",
+  "description": "Instant marketplace deal intelligence, resale spread checks, and negotiation assistance from PONS.",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
     "https://www.facebook.com/*",
-    "https://marketplace-ai-assistant.onrender.com/*",
-    "http://localhost:3000/*"
+    "https://api.pons.solutions/*"
   ],
   "background": {
     "service_worker": "src/background/background.js",
